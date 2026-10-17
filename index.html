@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Husayn Bijak</title>
+<meta name="theme-color" content="#F6EFDF">
+<meta name="description" content="Belajar membaca, mengira, menulis dan Iqra' bersama sahabat hutan kertas.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preload" href="fonts/baloo-2-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="app.css?v=1792230903">
+</head>
+<body>
+<div id="loader" class="loader"><img src="img/kenyalang.webp" alt=""></div>
+<div id="app">
+  <header class="bar">
+    <button id="btnBack" class="iconbtn" aria-label="Kembali" hidden><img src="img/ic-back.webp" alt=""></button>
+    <div class="brand paper"><img class="logo" src="img/kenyalang.webp" alt=""><span id="barTitle">Husayn Bijak</span></div>
+    <div class="grow"></div>
+    <div class="starcount paper" id="starCount" title="Bintang terkumpul"><img src="img/star-full.webp" alt=""><b>0</b></div>
+    <button id="btnAmb" class="iconbtn" aria-label="Bunyi alam hidup/mati"></button>
+    <button id="btnSound" class="iconbtn" aria-label="Suara hidup/mati"></button>
+  </header>
+  <main id="screen"></main>
+</div>
+<div id="fx" aria-hidden="true"></div>
+<svg id="measure" aria-hidden="true"></svg>
+<script src="app.js?v=1792230903"></script>
+</body>
+</html>

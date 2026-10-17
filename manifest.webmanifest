@@ -1,0 +1,18 @@
+{
+  "name": "Husayn Bijak",
+  "short_name": "Husayn Bijak",
+  "description": "Belajar membaca, mengira, menulis dan Iqra' bersama sahabat hutan kertas.",
+  "lang": "ms",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#F6EFDF",
+  "theme_color": "#F6EFDF",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
