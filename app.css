@@ -271,7 +271,7 @@ h1{font-size:clamp(1.8rem,3.6vw,2.6rem);line-height:1.08;margin:0;font-weight:80
 .spark{position:absolute;width:30px;height:30px;animation:burst 1s ease-out forwards;background:var(--c) ;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
 .confetti{position:absolute;width:14px;height:10px;background:var(--c);top:-20px;animation:fall var(--t,2.4s) linear forwards;border-radius:2px}
 .party{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(246,239,223,.7);animation:fadein .25s}
-.party video{width:min(86vw,820px);aspect-ratio:16/9;border-radius:28px;box-shadow:0 0 0 8px var(--card),0 20px 40px rgba(60,40,10,.3);background:#F6EDDC;object-fit:cover}
+.party video{width:min(86vw,680px);aspect-ratio:16/9;border-radius:28px;box-shadow:0 0 0 8px var(--card),0 20px 40px rgba(60,40,10,.3);background:#F6EDDC;object-fit:cover}
 #measure{position:absolute;width:0;height:0;overflow:hidden;visibility:hidden}
 .loader{position:fixed;inset:0;display:grid;place-items:center;background:var(--paper);z-index:100;transition:opacity .4s}
 .loader img{width:140px;animation:bob 1.4s ease-in-out infinite}

@@ -435,7 +435,7 @@ function screenTulis(ch,mode){
     <aside class="wside">
       <div class="wmodel paper"><svg viewBox="0 0 100 120" aria-hidden="true">${linesSVG()}${solidSVG(ch)}</svg><div class="ml"><b>${ch}</b><small>Contoh</small></div></div>
       <div class="seg wide"><button data-mode="surih" class="${mode==='surih'?'on':''}">Surih</button><button data-mode="tulis" class="${mode==='tulis'?'on':''}" id="modeTulis">Tulis sendiri</button></div>
-      <div class="wtools"><button class="btn soft" id="wDemo">▶ Tunjuk cara</button><button class="btn soft" id="wUndo">↶ Undur</button><button class="btn soft" id="wClear">✕ Padam</button></div>
+      <div class="wtools"><button class="btn soft" id="wDemo"><img src="img/ic-play.webp" alt="">Tunjuk cara</button><button class="btn soft" id="wUndo"><img src="img/ic-undo.webp" alt="">Undur</button><button class="btn soft" id="wClear"><img src="img/ic-eraser.webp" alt="">Padam</button></div>
       <div class="stars" id="wStars" aria-live="polite"><span></span><span></span><span></span></div>
       ${mascot('🦒',intro)}
       <p class="pennote" id="penNote">${penSeen?'Pensil dikesan. Sentuhan jari diabaikan.':'Tulis dengan M-Pencil atau jari.'}</p>
@@ -614,7 +614,7 @@ function screenBina(){
     $('#q').innerHTML=`<div class="bigpic" ${fresh?'':'style="animation:none"'}>${w.e}</div>
       <div class="slots">${slots.map((s,k)=>`<button class="slot ${s!==null?'filled':''} ${solved?'good':''}" data-k="${k}">${s!==null?tiles[s].t:''}</button>`).join('')}</div>
       <div class="tiles">${tiles.map((t,i)=>`<button class="syl ${t.used?'used':''}" data-i="${i}" ${solved?'disabled':''}>${t.t}</button>`).join('')}</div>
-      <div class="row center"><button class="btn soft" id="hear">Dengar</button>${solved?'<button class="btn big sea" id="nx">Seterusnya ›</button>':''}</div>`;
+      <div class="row center"><button class="btn soft" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar</button>${solved?'<button class="btn big sea" id="nx">Seterusnya ›</button>':''}</div>`;
     $$('.syl',main).forEach(b=>b.onclick=()=>{
       const i=+b.dataset.i;if(solved||tiles[i].used)return;const k=slots.indexOf(null);if(k<0)return;
       tiles[i].used=true;slots[k]=i;sfx('tap');say(tiles[i].t);render();if(slots.indexOf(null)<0)check();
@@ -655,7 +655,7 @@ function screenAyat(){
   function render(){
     const s=order[idx%order.length];
     $('#q').innerHTML=`<div class="bigpic">${s.e}</div><div class="sent">${s.t.split(' ').map(w=>`<button>${w}</button>`).join('')}</div>
-      <div class="parent paper"><span class="lbl">Untuk ibu/ayah: dengar Husayn baca, kemudian tekan</span><button class="btn leaf" id="ok">Betul</button><button class="btn sun" id="ag">Ulang</button><button class="btn soft" id="hear">Dengar ayat</button></div>`;
+      <div class="parent paper"><span class="lbl">Untuk ibu/ayah: dengar Husayn baca, kemudian tekan</span><button class="btn leaf" id="ok"><img src="img/ic-check.webp" alt="">Betul</button><button class="btn sun" id="ag"><img src="img/ic-undo.webp" alt="">Ulang</button><button class="btn soft" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar ayat</button></div>`;
     $$('.sent button',main).forEach(b=>b.onclick=()=>{b.classList.add('lit');say(b.textContent);setTimeout(()=>b.classList.remove('lit'),1200);});
     $('#hear').onclick=()=>say(s.t);
     $('#ok').onclick=()=>{right++;$('#sc').textContent=right;mascotSay(pick(PRAISE),'happy');addStars(1);celebrate(right%4===0?3:2);idx++;setTimeout(render,1100);};
@@ -715,7 +715,7 @@ function screenTambah(){
     $('#q').innerHTML=`<div class="eq">${a} + ${b} = <span class="qmark" id="qm">?</span></div>
       <div class="groups"><div class="pen paper">${critters(a,an)}</div><div class="op">+</div><div class="pen paper">${critters(b,an,a)}</div></div>
       <div class="opts" id="op">${numOpts(ans,1,10).map(v=>`<button class="opt" data-v="${v}">${v}</button>`).join('')}</div>
-      <div class="row center" id="nxr"><button class="btn soft" id="show">Tunjuk cara</button></div>`;
+      <div class="row center" id="nxr"><button class="btn soft" id="show"><img src="img/ic-play.webp" alt="">Tunjuk cara</button></div>`;
     const done=()=>{const q=$('#qm');q.textContent=ans;q.classList.add('done');};
     $('#show').onclick=async()=>{mascotSay(`${NUMW[a]} tambah ${NUMW[b]}. Jom kira semua.`,null,true,[NUMW[a],'tambah',NUMW[b],'Jom kira semua.']);await sleep(1600);await countOut($$('.critter',main),token);if(token.stop)return;done();mascotSay(`Semuanya ${NUMW[ans]}!`,'happy',true,['semuanya',NUMW[ans]]);};
     bindOpts($('#op'),v=>+v===ans,()=>{done();right++;$('#sc').textContent=right;{const p=pick(PRAISE);mascotSay(`${p} ${NUMW[a]} tambah ${NUMW[b]} jadi ${NUMW[ans]}.`,'happy',true,[p,NUMW[a],'tambah',NUMW[b],'jadi',NUMW[ans]]);}addStars(1);celebrate(right%5===0?3:2);$('#nxr').innerHTML='<button class="btn big sun" id="nx">Seterusnya ›</button>';$('#nx').onclick=newQ;});
@@ -730,7 +730,7 @@ function screenTolak(){
     $('#q').innerHTML=`<div class="eq">${a} − ${b} = <span class="qmark" id="qm">?</span></div>
       <div class="groups"><div class="pen paper" style="max-width:420px">${critters(a,an)}</div></div>
       <div class="opts" id="op">${numOpts(ans,0,10).map(v=>`<button class="opt" data-v="${v}">${v}</button>`).join('')}</div>
-      <div class="row center" id="nxr"><button class="btn soft" id="show">Tunjuk cara</button></div>`;
+      <div class="row center" id="nxr"><button class="btn soft" id="show"><img src="img/ic-play.webp" alt="">Tunjuk cara</button></div>`;
     const els=$$('.critter',main);
     setTimeout(()=>{if(!document.body.contains(els[0]))return;sfx('whoosh');els.slice(a-b).forEach(e=>e.classList.add('gone'));},900);
     const done=()=>{const q=$('#qm');q.textContent=ans;q.classList.add('done');};
@@ -784,7 +784,7 @@ function screenIqraBaca(){
     <div class="acthead"><p class="hint">${iqLabel()}. Baca dari kanan ke kiri.</p><span class="score paper">Baris: <b id="sc">0</b></span></div>
     <div class="qarea paper t2"><div class="iqline" dir="rtl" id="line"></div>
       <div class="row center"><button class="btn soft" id="tR"></button><button class="btn soft" id="nl">Baris lain</button></div></div>
-    <div class="parent paper"><span class="lbl">Untuk ibu/ayah: dengar Husayn baca satu baris, kemudian tekan</span><button class="btn leaf" id="ok">Betul</button><button class="btn sun" id="ag">Ulang</button></div>
+    <div class="parent paper"><span class="lbl">Untuk ibu/ayah: dengar Husayn baca satu baris, kemudian tekan</span><button class="btn leaf" id="ok"><img src="img/ic-check.webp" alt="">Betul</button><button class="btn sun" id="ag"><img src="img/ic-undo.webp" alt="">Ulang</button></div>
     ${mascot('🐢','Baca satu-satu, mula dari kanan. Tekan huruf untuk tengok bacaan.')}</div>`;
   const line=$('#line');
   function lbl(){$('#tR').textContent=showR?'Sorok bacaan':'Tunjuk bacaan';line.classList.toggle('showrumi',showR);}
