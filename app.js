@@ -18,12 +18,16 @@ let soundOn=store.get('sound',true);
 let penSeen=false;
 
 /* ---------- audio: Abbas's recorded voice, device-voice fallback, effects, nature sounds ---------- */
-/* Two voices: Ayah's own recordings and "Hafiz" (ElevenLabs child voice). Iqra' always uses Ayah's clips. */
-const VOICE={},V_AYAH={},V_HAFIZ={};
+/* Voices: Ayah's own recordings, "Hafiz" (ElevenLabs child voice) and, for Iqra', a qari's recordings of every
+   letter with fathah/kasrah/dammah (long vowels made from the same clips). Iqra' uses the qari unless Ayah is chosen. */
+const VOICE={},V_AYAH={},V_HAFIZ={},V_QARI={};
+let iqVoice=store.get('iqVoice','qari');
 let voiceSet=store.get('voiceSet','hafiz');
-function buildVoice(){for(const k in VOICE)delete VOICE[k];Object.assign(VOICE,V_AYAH);if(voiceSet==='hafiz')for(const k in V_HAFIZ)if(!k.startsWith('iq'))VOICE[k]=V_HAFIZ[k];}
-Promise.all([fetch('audio/voice.json').then(r=>r.json()).catch(()=>({})),fetch('audio/hafiz.json').then(r=>r.json()).catch(()=>({}))]).then(([a,h])=>{
-  for(const k in a)V_AYAH[k]='audio/'+a[k];for(const k in h)V_HAFIZ[k]='audio/'+h[k];buildVoice();});
+let VOICE_VER=0;
+function buildVoice(){VOICE_VER++;for(const k in VOICE)delete VOICE[k];Object.assign(VOICE,V_AYAH);if(voiceSet==='hafiz')for(const k in V_HAFIZ)if(!k.startsWith('iq'))VOICE[k]=V_HAFIZ[k];
+  if(iqVoice==='qari'&&Object.keys(V_QARI).length){for(const k in VOICE)if(k.startsWith('iq:'))delete VOICE[k];Object.assign(VOICE,V_QARI);}}
+Promise.all(['audio/voice.json','audio/hafiz.json','audio/qari.json'].map(u=>fetch(u).then(r=>r.json()).catch(()=>({})))).then(([a,h,q])=>{
+  for(const k in a)V_AYAH[k]='audio/'+a[k];for(const k in h)V_HAFIZ[k]='audio/'+h[k];for(const k in q)V_QARI[k]='audio/'+q[k];buildVoice();});
 function vkey(t){return String(t).toLowerCase().replace(/[!.,?]/g,'').replace(/\s+/g,' ').trim();}
 let voices=[];
 function loadVoices(){try{voices=speechSynthesis.getVoices()||[];}catch(e){}}
@@ -80,6 +84,7 @@ async function playJoined(srcs,gap,tok,caps){
    a part with no recording falls back to the device voice (never for Iqra'). */
 let curSay=Promise.resolve();
 function say(parts,opt={}){const p=sayInner(parts,opt);curSay=p.catch(()=>{});return p;}
+const MISSING=new Set();
 async function sayInner(parts,opt={}){
   if(!soundOn||parts==null)return;
   const arr=(Array.isArray(parts)?parts:[parts]).filter(p=>p!==''&&p!=null);
@@ -94,7 +99,7 @@ async function sayInner(parts,opt={}){
     if(tok!==playTok)return;
     const isIq=String(p).startsWith('iq:');const k=isIq?String(p):vkey(p);
     if(VOICE[k]){if(run.length&&runIq!==isIq)await flush();if(!run.length)runIq=isIq;run.push(VOICE[k]);runLong.push(/[*n+]$/.test(k));}
-    else{await flush();if(!isIq)await tts(String(p));}
+    else{await flush();MISSING.add(k);console.warn('[audio] missing',k);} /* never fall back to the robot voice */
   }
   await flush();
   if(tok===playTok)duck(false);
@@ -442,8 +447,8 @@ function screenParent(){
       <p class="parentnote"><b>Menulis:</b> guna M-Pencil. Bila pensil dikesan, sentuhan tapak tangan diabaikan.</p>
       <p class="parentnote"><b>Pasang sebagai app:</b> buka menu Chrome, kemudian pilih <b>Add to Home screen</b> / <b>Install app</b>. App boleh digunakan tanpa internet selepas dibuka sekali.</p>
       <p class="parentnote"><b>Bintang</b> disimpan dalam tablet ini sahaja.</p>
-      <div class="row"><button class="btn soft" id="ambT"></button><button class="btn soft" id="voiceT"></button></div>
-      <p class="parentnote">Suara Hafiz dijana dengan ElevenLabs. Bacaan Iqra' guna suara Ayah.</p>
+      <div class="row"><button class="btn soft" id="ambT"></button><button class="btn soft" id="voiceT"></button><button class="btn soft" id="iqT"></button></div>
+      <p class="parentnote">Suara Hafiz dijana dengan ElevenLabs (free tier, untuk kegunaan peribadi). Bacaan Iqra' (suara qari): rakaman santri Pondok Tahfidz Yanbu'ul Qur'an Kudus, set data "Pelafalan Huruf Hijaiyah" (lesen AFL-3.0). Bacaan panjang (mad) dibina daripada rakaman yang sama.</p>
       <p class="parentnote">Versi app: <b>${(document.querySelector('script[src^="app.js"]')||{src:''}).src.split('v=')[1]||'-'}</b></p>
       <div class="row"><button class="btn soft" id="resetStars">Kosongkan bintang</button><span class="parentnote" id="resetMsg"></span></div>
     </div></div>`;
@@ -451,6 +456,8 @@ function screenParent(){
   $('#ambT').onclick=()=>{$('#btnAmb').click();ambLbl();};
   const vLbl=()=>{$('#voiceT').innerHTML=`<img src="img/ic-speaker.webp" alt="">Suara: ${voiceSet==='hafiz'?'Hafiz':'Ayah'}`;};vLbl();
   $('#voiceT').onclick=()=>{voiceSet=voiceSet==='hafiz'?'ayah':'hafiz';store.set('voiceSet',voiceSet);buildVoice();vLbl();say('Hebat!');};
+  const iLbl=()=>{$('#iqT').innerHTML=`<img src="img/ic-speaker.webp" alt="">Iqra': ${iqVoice==='qari'?'Qari':'Ayah'}`;};iLbl();
+  $('#iqT').onclick=()=>{iqVoice=iqVoice==='qari'?'ayah':'qari';store.set('iqVoice',iqVoice);buildVoice();iLbl();say('iq:بa');};
   let armed=false;
   $('#resetStars').onclick=()=>{if(!armed){armed=true;$('#resetMsg').textContent='Tekan sekali lagi untuk sahkan.';return;}
     stars=0;store.set('stars',0);store.set('mstars',{});store.set('write',{});progress={};renderStars(false);$('#resetMsg').textContent='Bintang dikosongkan.';armed=false;};
@@ -468,7 +475,7 @@ function menuPage({title,intro,color,chips,cards,ask}){
   $$('.actbtn',main).forEach(b=>b.onclick=()=>{sfx('tap');const c=cards[+b.dataset.i];go(c.fn);if(c.say)say(c.say);});
 }
 function numOpts(ans,min=0,max=10){const set=new Set([ans]);for(const c of shuffle([ans-1,ans+1,ans-2,ans+2,ans+3,ans-3])){if(set.size>=3)break;if(c>=min&&c<=max)set.add(c);}return shuffle([...set]);}
-function bindOpts(box,isRight,onRight){
+function bindOpts(box,isRight,onRight){window.__opt={box,isRight};
   $$('.opt',box).forEach(b=>b.onclick=()=>{
     if(box.dataset.done)return;
     if(isRight(b.dataset.v)){box.dataset.done='1';b.classList.add('good');onRight(b);}
@@ -649,30 +656,27 @@ function screenTulis(ch,mode){
 /* ---------- MEMBACA ---------- */
 function bacaBook(){return Math.min(8,Math.max(1,store.get('bacaBook',4)));}
 function bookData(){return BA[bacaBook()];}
-/* words a game may use: this book first, topped up from earlier books */
+/* Words a game may use. A word belongs to the first book whose letters it needs: the book's own word list
+   plus the word bank (WB). Only words whose audio exists are used. */
+function hasAudio(w){return !!VOICE[vkey(w)];}
+const _stage={};
+function stageOf(w){if(_stage[w])return _stage[w];let st=WB[w]?wStage(w):9;
+  for(let k=1;k<=8;k++)if(BA[k].words.includes(w)){st=Math.min(st,k);break;}
+  return _stage[w]=st;}
+const ALLW=[...new Set(BA.slice(1).flatMap(b=>b.words).concat(Object.keys(WB)))];
+function wordsAt(n,needPic){return ALLW.filter(w=>stageOf(w)===n&&hasAudio(w)&&(!needPic||PIC[w]));}
 function bookWords(needPic){
-  const n=bacaBook();let cur=BA[n].words.filter(w=>!needPic||PIC[w]);
-  let prev=[];for(let k=n-1;k>=1;k--)prev=prev.concat(BA[k].words.filter(w=>!needPic||PIC[w]));
+  const n=bacaBook();const cur=wordsAt(n,needPic);let prev=[];for(let k=n-1;k>=1;k--)prev=prev.concat(wordsAt(k,needPic));
   return {cur,prev,all:[...new Set([...cur,...prev])]};}
-/* letters learned up to book n; picture words made only of those letters can join the picture games */
-const BA_LET=['','aiunb','msk','tycp','dglr','hjwfz','','oe',''];
-function lettersUpTo(n){let s='';for(let k=1;k<=Math.min(n,7);k++)s+=BA_LET[k];return s;}
-function knownWord(w,n){if(n>=8)return true;const L=lettersUpTo(n),syl=w.split('-').flatMap(sukuKata);
-  return syl.every(x=>[...x].every(c=>L.includes(c))&&(n>=6||/[aiu]$/.test(x)));}
-function picPool(n){return [...new Set(Object.keys(PIC).filter(w=>knownWord(w,n)).concat(BA[n].words.filter(w=>PIC[w])))];}
-function bookWords(needPic){
-  const n=bacaBook();let cur=BA[n].words.filter(w=>!needPic||PIC[w]);
-  let prev=[];for(let k=n-1;k>=1;k--)prev=prev.concat(BA[k].words.filter(w=>!needPic||PIC[w]));
-  if(needPic)prev=prev.concat(picPool(n).filter(w=>!cur.includes(w)));
-  prev=[...new Set(prev)].filter(w=>!cur.includes(w));
-  return {cur,prev,all:[...new Set([...cur,...prev])]};}
-/* recent targets, so the same word does not come back too soon */
-const RECENT=[];
-function fresh(pool){const keep=Math.min(8,Math.floor(pool.length/2));const rec=RECENT.slice(-keep);
-  let c=pool.filter(x=>!rec.includes(x));if(!c.length)c=pool;const v=pick(c);RECENT.push(v);if(RECENT.length>20)RECENT.shift();return v;}
+function picPool(n){let o=[];for(let k=1;k<=n;k++)o=o.concat(wordsAt(k,true));return o;}
+/* recently used items, kept across sessions, so the same word does not come back until most others have had a turn */
+const RECENT=store.get('recent',{});
+function fresh(pool,key='w'){const r=RECENT[key]||(RECENT[key]=[]);const keep=Math.min(60,Math.floor(pool.length*.7));const rec=new Set(r.slice(-keep));
+  let c=pool.filter(x=>!rec.has(x));if(!c.length)c=pool;const v=pick(c);r.push(v);if(r.length>80)r.splice(0,r.length-80);
+  clearTimeout(fresh.t);fresh.t=setTimeout(()=>store.set('recent',RECENT),500);return v;}
 function pickWord(needPic){const {cur,prev}=bookWords(needPic);
-  const pool=(cur.length>=3&&(Math.random()<.65||!prev.length))?cur:(cur.length?[...cur,...prev]:prev);
-  return fresh(pool.length?pool:Object.keys(PIC));}
+  const pool=(cur.length>=4&&(Math.random()<.6||!prev.length))?cur:[...cur,...prev];
+  return fresh(pool.length?pool:Object.keys(PIC).filter(hasAudio),'w'+bacaBook()+(needPic?'p':''));}
 /* syllables learned up to this book (for review grids and distractors) */
 function bookSyl(upto){const out=[];for(let k=1;k<=upto;k++)BA[k].units.forEach(u=>out.push(...u.sy));return [...new Set(out)];}
 /* "dua warna": syllables alternate red and black, as in the books */
@@ -738,7 +742,7 @@ function screenCariBunyi(){
   actShell('Cari bunyi',()=>go(screenBacaMenu),'','🐘','Dengar, kemudian tekan bunyi yang betul.','sea');
   let right=0,last=null;const mine=[...new Set(b.units.flatMap(u=>u.sy))],old=b.n>1?bookSyl(b.n-1):[];
   function newQ(){
-    let t;do{t=(old.length&&Math.random()<.3)?pick(old):pick(mine);}while(t===last&&mine.length>1);last=t;
+    const t=(old.length&&Math.random()<.3)?fresh(old,'cbo'):fresh(mine,'cb'+b.n);last=t;
     const pool=[...new Set([...mine,...old])].filter(s=>s!==t);
     const opts=shuffle([t,...shuffle(pool).slice(0,b.n<=1?3:5)]);
     $('#q').innerHTML=`<button class="btn big hear" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar</button>
@@ -811,6 +815,28 @@ function screenPilih(){
   }
   newQ();
 }
+/* Sentences: the book's own, plus simple sentences built from the word bank. Every word in a built sentence
+   uses letters already learned and has its own recording, so "Dengar ayat" reads it word by word. */
+const BIG='gajah zirafah unta kerbau lembu beruang paus harimau singa buaya kuda'.split(' '),SMALL='semut nyamuk lebah tikus siput ulat lipas itik arnab'.split(' ');
+const _sent={};
+function sentPool(n){if(_sent[n]&&_sent[n].v===VOICE_VER)return _sent[n].a;
+  const ok=w=>stageOf(w)<=n&&hasAudio(w),f=a=>a.filter(ok);
+  const ppl=f(['ibu','bapa','ani','abu','sani','nani','ali','amin','mama','papa','kakak','adik','abang','datuk','nenek','guru']);
+  const an=f(CAT.haiwan||[]),food=f((CAT.makanan||[]).concat(['nasi','roti','ikan','kek'])),drink=f(['susu','kopi','air']),thing=f(CAT.benda||[]);
+  const seen=f([...new Set(an.concat(thing,food))]).filter(w=>PIC[w]);const o=[];
+  const cap=x=>n>=6?x.replace(/^./,c=>c.toUpperCase()).replace(/\b(ali|ani|abu|sani|nani|amin|budin)\b/g,c=>c[0].toUpperCase()+c.slice(1)):x;
+  for(const N of seen){if(ok('ini'))o.push(`ini ${N}.`);if(ok('itu'))o.push(`itu ${N}.`);if(ok('mana')&&ok('itu'))o.push(`mana ${N}? itu ${N}.`);}
+  for(const P of ppl){if(ok('ada'))for(const T of thing.concat(an))o.push(`${P} ada ${T}.`);
+    if(ok('suka'))for(const F of food.concat(an))o.push(`${P} suka ${F}.`);
+    if(ok('makan'))for(const F of food)o.push(`${P} makan ${F}.`);
+    if(ok('minum'))for(const D of drink)o.push(`${P} minum ${D}.`);}
+  if(ok('saya')){if(ok('suka'))for(const F of food)o.push(`saya suka ${F}.`);if(ok('ada'))for(const T of thing)o.push(`saya ada ${T}.`);}
+  if(ok('besar'))for(const A of an.filter(x=>BIG.includes(x)))o.push(`${A} itu besar.`);
+  if(ok('kecil'))for(const A of an.filter(x=>SMALL.includes(x)))o.push(`${A} itu kecil.`);
+  const a=[...new Set(o)].map(cap);_sent[n]={v:VOICE_VER,a};return a;}
+function bookSentences(n){return BA[n].sent.map(x=>x.replace(' (*)',''));}
+function pickSentence(n){const own=bookSentences(n),old=BA.slice(1,n).flatMap(x=>x.sent).map(x=>x.replace(' (*)','')),built=sentPool(n);
+  const r=Math.random();const pool=r<.3?own:(r<.45&&old.length?old:(built.length?built:own));return fresh(pool,'s'+n);}
 function sayAyat(t){return say(VOICE[vkey(t)]?t:t.replace(/[.,?!]/g,'').split(' '));}
 function sylW(w){return w.split('-').flatMap(sukuKata);}
 /* n distractors for target from pool; about half share a syllable with it so they are not too easy */
@@ -849,7 +875,8 @@ function screenKuiz(){
       $$('.word b',main).forEach(x=>x.onclick=()=>say(x.textContent));lastSay=null;
       done(v=>v===w,w);},
     sukuHilang(){ // one syllable is missing
-      let w,t=0;do{w=pickWord(Math.random()<.5);}while(!multi(w)&&++t<20);
+      let w,t=0;do{w=pickWord(Math.random()<.5);}while((!multi(w)||!sylW(w).every(hasAudio))&&++t<40);
+      if(!multi(w)||!sylW(w).every(hasAudio))return T.kiraSuku();
       const parts=sylW(w),k=rint(0,parts.length-1),ans=parts[k],opts=shuffle([ans,...distract(ans,allSyl,2)]);
       ask('Suku kata mana yang hilang?');
       q(`${PIC[w]?`<div class="bigpic sm">${PIC[w]}</div>`:''}<div class="word big gap">${parts.map((x,i)=>i===k?'<b class="hole" id="hole">?</b>':`<b class="${i%2?'k':'m'}">${x}</b>`).join('')}</div>
@@ -865,23 +892,23 @@ function screenKuiz(){
       done(v=>v===t,t);},
     mulaBunyi(){ // which word starts with this syllable?
       const pool=words().all;let w,t=0,first,others;
-      do{w=pickWord(false);first=sylW(w)[0];others=pool.filter(x=>sylW(x)[0]!==first);}while(others.length<2&&++t<20);
+      do{w=pickWord(false);first=sylW(w)[0];others=pool.filter(x=>sylW(x)[0]!==first);}while((others.length<2||!hasAudio(first))&&++t<30);
+      if(!hasAudio(first))return T.dengarKata();
       if(others.length<2)return T.dengarKata();
       const opts=shuffle([w,...distract(w,others,2)]);
-      ask(`Mana yang mula dengan bunyi "${first}"?`);
+      ask(`Mana yang mula dengan bunyi "${first}"?`,true,[first],'Mana yang mula dengan bunyi ini?');
       q(`<button class="bigsyl" id="hear">${first}</button>${wordOpts(opts)}`);
-      lastSay=first;$('#hear').onclick=()=>say(first);setTimeout(()=>say(first),300);
+      $('#hear').onclick=()=>say(first);
       done(v=>v===w,w);},
     kiraSuku(){ // how many syllables?
       const w=pickWord(Math.random()<.5),k=sylW(w).length,opts=numOpts(k,1,5);
-      ask('Ada berapa suku kata? Tekan setiap suku kata dulu.');
+      ask('Ada berapa suku kata? Tekan setiap suku kata dulu.',true,null,'Ada berapa suku kata?');
       q(`${PIC[w]?`<div class="bigpic sm">${PIC[w]}</div>`:''}<div class="word big gap">${sylW(w).map((x,i)=>`<b class="${i%2?'k':'m'}">${x}</b>`).join('')}</div>
         <div class="opts" id="op">${opts.map(o=>`<button class="opt" data-v="${o}">${o}</button>`).join('')}</div>`);
       $$('.word b',main).forEach(x=>x.onclick=()=>{x.classList.remove('lit');void x.offsetWidth;x.classList.add('lit');say(x.textContent);});lastSay=null;
       done(v=>+v===k,w);},
     ayatHilang(){ // which word is missing from the sentence?
-      const old2=BA.slice(1,n).flatMap(x=>x.sent),pool=Math.random()<.7||!old2.length?b.sent:old2;
-      const raw=fresh(pool).replace(' (*)',''),ws=raw.split(' ');
+      const raw=pickSentence(n),ws=raw.split(' ');
       const cand=ws.map((x,i)=>[x.replace(/[.,?!]/g,''),i]).filter(([x])=>x.length>=3&&!/^(ini|itu|mana|saya|ada|di|dan)$/i.test(x)&&(words().all.includes(x.toLowerCase())||PIC[x.toLowerCase()]));
       if(!cand.length)return T.dengarKata();
       const [ans,i]=pick(cand),low=ans.toLowerCase(),inSent=new Set(ws.map(x=>x.replace(/[.,?!]/g,'').toLowerCase()));
@@ -895,7 +922,12 @@ function screenKuiz(){
   let lastSyl=null;
   const q=html=>{$('#q').innerHTML=html+'<div class="row center" id="nxr"></div>';};
   const wordOpts=opts=>`<div class="opts words" id="op">${opts.map(o=>`<button class="opt wd" data-v="${o}">${duaWarna(o)}</button>`).join('')}</div>`;
-  function ask(text,speak=true){mascotSay(text,null,false);if(speak&&VOICE[vkey(text)])say(text);}
+  /* the instruction is spoken the first time each kind of question comes up; after that it is only shown
+     (tap the guide to hear it again), so the same sentence is not heard over and over */
+  const told=new Set();
+  function ask(text,speak=true,extra,audioText){mascotSay(text,null,false);const at=audioText||text,parts=[];
+    if(speak&&VOICE[vkey(at)]&&!told.has(at)){told.add(at);parts.push(at);}
+    if(extra)parts.push(...extra);lastSay=extra?extra:(VOICE[vkey(at)]?at:null);if(parts.length)setTimeout(()=>say(parts),200);}
   function done(isRight,w,onOk,quiet){
     bindOpts($('#op'),isRight,()=>{right++;setScore(right);if(onOk)onOk();const p=pick(PRAISE);
       mascotSay(p,'happy',true,quiet?[p]:(w?[p,w]:[p]));addStars(1);celebrate(right%5===0?3:2);
@@ -908,16 +940,15 @@ function screenKuiz(){
 }
 function screenAyat(){
   actShell('Ayat',()=>go(screenBacaMenu),'','🐘','Baca perlahan-lahan ya.','sea');
-  const b=bookData();const old=BA.slice(1,b.n).flatMap(x=>x.sent);
-  let order=shuffle(b.sent.concat(shuffle(old).slice(0,Math.ceil(b.sent.length/2)))),idx=0,right=0;
+  const b=bookData();let right=0;
   function render(){
-    const raw=order[idx%order.length],t=raw.replace(' (*)','');lastSay=null;
+    const t=pickSentence(b.n);lastSay=null;
     const pw=t.toLowerCase().replace(/[.,?!]/g,'').split(' ').find(x=>PIC[x]);
     $('#q').innerHTML=`<div class="bigpic">${pw?PIC[pw]:'📖'}</div><div class="sent">${t.split(' ').map(x=>`<button>${duaWarna(x)}</button>`).join('')}</div>
       <div class="parent"><span class="lbl">Ibu/Ayah: dengar Husayn baca, kemudian tekan</span><button class="btn leaf" id="ok"><img src="img/ic-check.webp" alt="">Betul</button><button class="btn sun" id="ag"><img src="img/ic-undo.webp" alt="">Ulang</button><button class="btn soft" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar ayat</button></div>`;
     $$('.sent button',main).forEach(x=>x.onclick=()=>{x.classList.add('lit');say(x.textContent.replace(/[.,?!]/g,''));setTimeout(()=>x.classList.remove('lit'),1200);});
     $('#hear').onclick=()=>sayAyat(t);
-    $('#ok').onclick=()=>{right++;setScore(right);mascotSay(pick(PRAISE),'happy');addStars(1);celebrate(right%4===0?3:2);idx++;setTimeout(render,1100);};
+    $('#ok').onclick=()=>{if($('#ok').disabled)return;$('#ok').disabled=true;right++;setScore(right);mascotSay(pick(PRAISE),'happy');addStars(1);celebrate(right%4===0?3:2);setTimeout(render,1100);};
     $('#ag').onclick=()=>mascotSay('Tak apa. Baca sekali lagi, satu-satu perkataan.');
   }
   render();
@@ -925,7 +956,7 @@ function screenAyat(){
 
 /* ---------- MENGIRA: Tang Math sequence (concrete → picture → number; group, don't count by ones) ---------- */
 const NUMW=['sifar','satu','dua','tiga','empat','lima','enam','tujuh','lapan','sembilan','sepuluh'];
-const ANIMALS=['🐥','🐟','🐸','🐞','🐢','🐰','🐱','🐵','🦆','🐝','🐘','🦒'];
+const ANIMALS=['🐥','🐟','🐸','🐞','🐢','🐰','🐱','🐵','🦆','🐝','🐘','🦒','🐻','🐼','🦁','🐯','🐮','🐔','🐧','🦋','🐌','🦀','🐠','🐬','🦊','🐿️','🦔','🦜','🦉','🦓','🐨','🐳'];
 const TAHAP=[null,
  {n:1,name:'1 hingga 5',max:5,col:'#2A9DA8',acts:['kenal','kilat','isi']},
  {n:2,name:'Tambah hingga 5',max:5,col:'#F6A93B',acts:['ikatan','tambah','kilatTambah']},
@@ -943,7 +974,8 @@ const KACT={
  hilang:{icon:'🔍',name:'Cari hilang',fn:()=>screenIkatan('sub')},
  tambah:{icon:'➕',name:'Tambah',fn:()=>screenTambah(),say:'tambah'},
  tolak:{icon:'➖',name:'Tolak',fn:()=>screenTolak(),say:'tolak'},
- buat10:{icon:'🔟',name:'Buat 10',fn:()=>screenBuat10()}};
+ buat10:{icon:'🔟',name:'Buat 10',fn:()=>screenBuat10()},
+ campur:{icon:'🎲',name:'Soalan campur',fn:()=>screenKiraKuiz(),hot:true}};
 function kTahap(){return Math.min(6,Math.max(1,store.get('kTahap',1)));}
 function kMax(){return TAHAP[kTahap()].max;}
 function kMin(){return kTahap()>=4?6:1;}
@@ -963,6 +995,14 @@ function bondHTML(total,a,b,miss){
   return `<div class="bond"><svg viewBox="0 0 200 120" preserveAspectRatio="none"><line x1="100" y1="30" x2="40" y2="95"/><line x1="100" y1="30" x2="160" y2="95"/></svg>${c(total,'t')}${c(a,'a')}${c(b,'b')}</div>`;}
 function optsHTML(ans,min,max){return `<div class="opts" id="op">${numOpts(ans,min,max).map(v=>`<button class="opt" data-v="${v}">${v}</button>`).join('')}</div>`;}
 function nextBtn(cb){$('#nxr').innerHTML='<button class="btn big next" id="nx">Seterusnya <i class="tri"></i></button>';$('#nx').onclick=cb;}
+/* deck: every combination once, in random order, before any comes back */
+const DECKS={};
+function deal(key,make){let d=DECKS[key];if(!d||!d.length){const all=make();d=DECKS[key]=shuffle(all);
+  const last=DECKS[key+':last'];if(last!=null&&d.length>1&&JSON.stringify(d[d.length-1])===last)d.unshift(d.pop());}
+  const v=d.pop();DECKS[key+':last']=JSON.stringify(v);return v;}
+function range(a,b){const o=[];for(let i=a;i<=b;i++)o.push(i);return o;}
+let _lastAn=[];
+function pickAnimal(not){const c=ANIMALS.filter(x=>x!==not&&!_lastAn.includes(x));const a=pick(c.length?c:ANIMALS);_lastAn.push(a);if(_lastAn.length>4)_lastAn.shift();return a;}
 function winRound(r,parts){setScore(r);const p=pick(PRAISE);mascotSay(p,'happy',true,[p,...(parts||[])]);addStars(1);celebrate(r%5===0?3:2);}
 
 function screenKiraMenu(){
@@ -970,7 +1010,7 @@ function screenKiraMenu(){
   setBar('Mengira',()=>go(screenHome));
   const t=kTahap(),T=TAHAP[t];
   const chips=`<div class="chipset k-kTahap"><span class="chiplbl">Tahap</span><div class="chips">${TAHAP.slice(1).map(x=>`<button class="chip book ${x.n===t?'on':''}" data-key="kTahap" data-v="${x.n}" style="--bk:${x.col}"><b>${x.n}</b><small>${['','1-5','+5','−5','6-10','+10','−10'][x.n]}</small></button>`).join('')}</div></div>`;
-  menuPage({title:'Mengira',color:'sun',chips,ask:`Tahap ${t}: ${T.name}. Nak main apa?`,cards:T.acts.map(k=>KACT[k])});
+  menuPage({title:'Mengira',color:'sun',chips,ask:`Tahap ${t}: ${T.name}. Nak main apa?`,cards:T.acts.concat('campur').map(k=>KACT[k])});
   bindChips('kTahap',screenKiraMenu);
 }
 
@@ -993,10 +1033,10 @@ function screenKilat(mode){
   actShell('Kilat',()=>go(screenKiraMenu),'','🐵','Tengok cepat! Ada berapa?','sun');
   let right=0;const max=kMax(),min=kMin();
   function newQ(){
-    lastSay=null;let ans,parts,eq='';const an=pick(ANIMALS),an2=pick(ANIMALS.filter(x=>x!==an));
-    if(mode==='n'){ans=rint(Math.max(1,min-(min>1?2:0)),max);parts=ans>5?[[5,an,'pa'],[ans-5,an,'pb']]:[[ans,an,'pa']];}
-    else if(mode==='add'){const a=rint(1,max-1),b=rint(1,max-a);ans=a+b;parts=[[a,an,'pa'],[b,an2,'pb']];eq=`${a} + ${b}`;}
-    else{const a=rint(2,max),b=rint(1,a-1);ans=a-b;parts=[[a,an,'pa']];eq=`${a} − ${b}`;}
+    lastSay=null;let ans,parts,eq='';const an=pickAnimal(),an2=pickAnimal(an);
+    if(mode==='n'){ans=deal('kn'+max,()=>range(Math.max(1,min-(min>1?2:0)),max));parts=ans>5?[[5,an,'pa'],[ans-5,an,'pb']]:[[ans,an,'pa']];}
+    else if(mode==='add'){const [a,b]=deal('ka'+max,()=>range(1,max-1).flatMap(a=>range(1,max-a).map(b=>[a,b])));ans=a+b;parts=[[a,an,'pa'],[b,an2,'pb']];eq=`${a} + ${b}`;}
+    else{const [a,b]=deal('ks'+max,()=>range(2,max).flatMap(a=>range(1,a-1).map(b=>[a,b])));ans=a-b;parts=[[a,an,'pa']];eq=`${a} − ${b}`;}
     const cap=max>5?10:5,gone=mode==='sub'?+eq.split('−')[1]:0;
     $('#q').innerHTML=`${eq?`<div class="eq">${eq} = <span class="qmark" id="qm">?</span></div>`:''}<div class="flash" id="fl">${frameHTML(parts,cap,{gone})}<div class="cover" id="cv">👀</div></div>${optsHTML(ans,0,max)}<div class="row center" id="nxr"><button class="btn soft" id="again"><img src="img/ic-play.webp" alt="">Tengok lagi</button></div>`;
     const fl=$('#fl');const flash=()=>{fl.classList.remove('hid');setTimeout(()=>{if(document.body.contains(fl))fl.classList.add('hid');},max>5?2200:1600);};
@@ -1010,7 +1050,7 @@ function screenIsi(){
   actShell('Isi bakul',()=>go(screenKiraMenu),'','🐵','Masukkan ikut nombor.','sun');
   let right=0;const max=kMax(),min=kMin();
   function newQ(){
-    const n=rint(min,max),an=pick(ANIMALS),cap=max>5?10:5;let have=0;lastSay=NUMW[n];
+    const n=deal('isi'+min+max,()=>range(min,max)),an=pickAnimal(),cap=max>5?10:5;let have=0;lastSay=NUMW[n];
     $('#q').innerHTML=`<div class="target"><b>${n}</b><span>${NUMW[n]}</span></div>${frameHTML([],cap,{cls:'tap'})}<div class="row center" id="nxr"><button class="btn soft" id="undo"><img src="img/ic-undo.webp" alt="">Keluar satu</button><button class="btn big leaf" id="chk"><img src="img/ic-check.webp" alt="">Siap!</button></div>`;
     say(NUMW[n]);
     const cells=$$('.cell',main);
@@ -1026,7 +1066,7 @@ function screenIkatan(op){
   actShell(op==='add'?'Ikatan':'Cari hilang',()=>go(screenKiraMenu),'','🐵',op==='add'?'Dua bahagian. Semuanya berapa?':'Semuanya ada. Satu bahagian hilang!','sun');
   let right=0;const max=kMax();
   function newQ(){
-    const t=rint(Math.max(2,kMin()),max),a=rint(1,t-1),b=t-a,an=pick(ANIMALS),an2=pick(ANIMALS.filter(x=>x!==an));
+    const [t,a]=deal('ik'+op+max,()=>range(Math.max(2,kMin()),max).flatMap(t=>range(1,t-1).map(a=>[t,a]))),b=t-a,an=pickAnimal(),an2=pickAnimal(an);
     const miss=op==='add'?'t':pick(['a','b']),ans=miss==='t'?t:miss==='a'?a:b;
     lastSay=op==='add'?[NUMW[a],'tambah',NUMW[b]]:null;
     const parts=miss==='t'?[[a,an,'pa'],[b,an2,'pb']]:miss==='a'?[[b,an2,'pb']]:[[a,an,'pa']];
@@ -1041,7 +1081,7 @@ function screenTambah(){
   actShell('Tambah',()=>go(screenKiraMenu),'','🐵','Dua kumpulan. Semuanya berapa?','sun');
   let right=0;const max=kMax();
   function newQ(){
-    const a=rint(1,max-1),b=rint(1,Math.min(max-a,5)),ans=a+b,an=pick(ANIMALS),an2=pick(ANIMALS.filter(x=>x!==an));
+    const [a,b]=deal('tb'+max,()=>range(1,max-1).flatMap(a=>range(1,Math.min(max-a,5)).map(b=>[a,b]))),ans=a+b,an=pickAnimal(),an2=pickAnimal(an);
     lastSay=[NUMW[a],'tambah',NUMW[b]];
     $('#q').innerHTML=`<div class="eq">${a} + ${b} = <span class="qmark" id="qm">?</span></div>${frameHTML([[a,an,'pa'],[b,an2,'pb']],frameCap(ans))}${optsHTML(ans,1,max)}<div class="row center" id="nxr"><button class="btn soft" id="show"><img src="img/ic-play.webp" alt="">Tunjuk cara</button></div>`;
     const done=()=>{const q=$('#qm');q.textContent=ans;q.classList.add('done');};
@@ -1056,7 +1096,7 @@ function screenTolak(){
   actShell('Tolak',()=>go(screenKiraMenu),'','🐵','Ada yang lari! Tinggal berapa?','sun');
   let right=0;const max=kMax();
   function newQ(){
-    const a=rint(Math.max(2,kMin()),max),b=rint(1,a-1),ans=a-b,an=pick(ANIMALS);
+    const [a,b]=deal('tl'+max,()=>range(Math.max(2,kMin()),max).flatMap(a=>range(1,a-1).map(b=>[a,b]))),ans=a-b,an=pickAnimal();
     lastSay=[NUMW[a],'tolak',NUMW[b]];
     $('#q').innerHTML=`<div class="eq">${a} − ${b} = <span class="qmark" id="qm">?</span></div><div id="fw">${frameHTML([[a,an,'pa']],frameCap(a))}</div>${optsHTML(ans,0,max)}<div class="row center" id="nxr"></div>`;
     setTimeout(()=>{const fw=$('#fw');if(!fw)return;sfx('whoosh');fw.innerHTML=frameHTML([[a,an,'pa']],frameCap(a),{gone:b,still:true});say(['ada',NUMW[a],NUMW[b],'pergi']);},900);
@@ -1068,11 +1108,63 @@ function screenBuat10(){
   actShell('Buat 10',()=>go(screenKiraMenu),'','🐵','Berapa lagi nak jadi sepuluh?','sun');
   let right=0;
   function newQ(){
-    const n=rint(1,9),an=pick(ANIMALS),ans=10-n;lastSay=[NUMW[n]];
+    const n=deal('b10',()=>range(1,9)),an=pickAnimal(),ans=10-n;lastSay=[NUMW[n]];
     $('#q').innerHTML=`<div class="eq">${n} + <span class="qmark" id="qm">?</span> = 10</div>${frameHTML([[n,an,'pa']],10)}${optsHTML(ans,1,9)}<div class="row center" id="nxr"></div>`;
     bindOpts($('#op'),v=>+v===ans,()=>{const q=$('#qm');q.textContent=ans;q.classList.add('done');
       $('.frame',main).outerHTML=frameHTML([[n,an,'pa'],[ans,'⭐','pb']],10,{still:true});right++;winRound(right,[NUMW[n],'tambah',NUMW[ans],'jadi','sepuluh']);nextBtn(newQ);});
   }
+  newQ();
+}
+
+/* SOALAN CAMPUR (Mengira): several kinds of question in turn. A kind whose spoken instruction is not recorded
+   is left out, because Husayn cannot read the instruction yet. */
+function scatterHTML(n,an){ // n animals spread loosely (not in a frame), in a jittered grid so they never overlap
+  const cols=n<=4?n:(n<=6?3:(n<=8?4:5)),rows=Math.ceil(n/cols),cells=shuffle(range(0,cols*rows-1)).slice(0,n);
+  return `<div class="scat" style="--c:${cols};--r:${rows}">${cells.map(i=>`<span style="grid-column:${i%cols+1};grid-row:${Math.floor(i/cols)+1};--dx:${rint(-18,18)}%;--dy:${rint(-18,18)}%;--rt:${rint(-14,14)}deg">${an}</span>`).join('')}</div>`;}
+function screenKiraKuiz(){
+  actShell('Soalan campur',()=>go(screenKiraMenu),'','🐵','Jom jawab soalan!','sun');
+  const max=kMax(),min=kMin(),t=kTahap();let right=0,bag=[],lastT=null;const told=new Set();
+  const rec=x=>!!VOICE[vkey(x)];
+  function ask(text,always,extra){mascotSay(text,null,false);const parts=[];
+    if(rec(text)&&(always||!told.has(text))){told.add(text);parts.push(text);}
+    if(extra)parts.push(...extra);lastSay=[text,...(extra||[])].filter(rec);if(parts.length)setTimeout(()=>say(parts),250);}
+  const q=html=>{$('#q').innerHTML=html+'<div class="row center" id="nxr"></div>';};
+  function done(isRight,parts,onOk){bindOpts($('#op'),isRight,b=>{right++;if(onOk)onOk(b);winRound(right,parts);nextBtn(newQ);});}
+  const add=t===2||t===5,sub=t===3||t===6;
+  const T={
+    kira:{p:'Jom kira semua.',f(){const n=deal('qk'+min+max,()=>range(min,max)),an=pickAnimal();ask(this.p);
+      q(`${scatterHTML(n,an)}${optsHTML(n,Math.max(0,min-2),max)}`);done(v=>+v===n,['ada',NUMW[n]]);}},
+    padan:{p:'Yang mana satu?',f(){const n=deal('qp'+min+max,()=>range(min,max)),an=pickAnimal(),cap=max>5?10:5;
+      const opts=numOpts(n,1,max);ask(this.p,true,[NUMW[n]]);
+      q(`<div class="target"><b>${n}</b><span>${NUMW[n]}</span></div><div class="opts frs" id="op">${opts.map(v=>`<button class="opt fr" data-v="${v}">${frameHTML(v>5?[[5,an,'pa'],[v-5,an,'pb']]:[[v,an,'pa']],cap,{still:true})}</button>`).join('')}</div>`);
+      done(v=>+v===n,[NUMW[n]]);}},
+    kilat:{p:'Tengok cepat! Ada berapa?',f(){const n=deal('qf'+min+max,()=>range(Math.max(1,min-2),max)),an=pickAnimal(),cap=max>5?10:5;ask(this.p);
+      q(`<div class="flash" id="fl">${frameHTML(n>5?[[5,an,'pa'],[n-5,an,'pb']]:[[n,an,'pa']],cap)}<div class="cover" id="cv">👀</div></div>${optsHTML(n,0,max)}`);
+      const fl=$('#fl');setTimeout(()=>{fl.classList.remove('hid');setTimeout(()=>{if(document.body.contains(fl))fl.classList.add('hid');},max>5?2200:1600);},300);
+      done(v=>+v===n,[NUMW[n]],()=>fl.classList.remove('hid'));}},
+    banding:{p:'Mana yang lebih banyak?',p2:'Mana yang lebih sedikit?',f(){let a,b;do{a=rint(1,max);b=rint(1,max);}while(a===b);
+      const more=Math.random()<.5,txt=more?this.p:this.p2,ans=more?(a>b?'a':'b'):(a<b?'a':'b');const an=pickAnimal(),an2=pickAnimal(an);ask(txt,true);
+      q(`<div class="opts cmp" id="op"><button class="opt grp" data-v="a">${scatterHTML(a,an)}</button><button class="opt grp" data-v="b">${scatterHTML(b,an2)}</button></div>`);
+      done(v=>v===ans,[NUMW[ans==='a'?a:b]]);}},
+    selepas:{p:'Nombor apa selepas ini?',f(){const n=deal('qs'+max,()=>range(1,max-1));ask(this.p,true,[NUMW[n]]);
+      q(`<div class="nline">${(n>1?`<span>${n-1}</span><i>→</i>`:'')+`<span class="cur">${n}</span><i>→</i><span class="qmark" id="qm">?</span>`}</div>${optsHTML(n+1,1,max)}`);
+      done(v=>+v===n+1,[NUMW[n+1]],()=>{const m=$('#qm');m.textContent=n+1;m.classList.add('done');});}},
+    sebelum:{p:'Nombor apa sebelum ini?',f(){const n=deal('qb'+max,()=>range(2,max));ask(this.p,true,[NUMW[n]]);
+      q(`<div class="nline"><span class="qmark" id="qm">?</span><i>→</i><span class="cur">${n}</span>${n<max?`<i>→</i><span>${n+1}</span>`:''}</div>${optsHTML(n-1,0,max)}`);
+      done(v=>+v===n-1,[NUMW[n-1]],()=>{const m=$('#qm');m.textContent=n-1;m.classList.add('done');});}},
+    hilang:{p:'Nombor mana yang hilang?',f(){const L=Math.min(5,max),st=rint(1,max-L+1),seq=range(st,st+L-1),k=rint(1,L-2),ans=seq[k];ask(this.p);
+      q(`<div class="nline">${seq.map((v,i)=>i===k?'<span class="qmark" id="qm">?</span>':`<span>${v}</span>`).join('')}</div>${optsHTML(ans,1,max)}`);
+      done(v=>+v===ans,[NUMW[ans]],()=>{const m=$('#qm');m.textContent=ans;m.classList.add('done');});}},
+    tambah:{p:'Dua kumpulan. Semuanya berapa?',need:()=>add||t>=5,f(){const [a,b]=deal('qt'+max,()=>range(1,max-1).flatMap(a=>range(1,max-a).map(b=>[a,b]))),an=pickAnimal(),an2=pickAnimal(an);ask(this.p);
+      q(`<div class="eq">${a} + ${b} = <span class="qmark" id="qm">?</span></div>${frameHTML([[a,an,'pa'],[b,an2,'pb']],frameCap(a+b))}${optsHTML(a+b,1,max)}`);
+      done(v=>+v===a+b,[NUMW[a],'tambah',NUMW[b],'jadi',NUMW[a+b]],()=>{const m=$('#qm');m.textContent=a+b;m.classList.add('done');});}},
+    tolak:{p:'Ada yang lari! Tinggal berapa?',need:()=>sub,f(){const [a,b]=deal('qo'+max,()=>range(2,max).flatMap(a=>range(1,a-1).map(b=>[a,b]))),an=pickAnimal();ask(this.p);
+      q(`<div class="eq">${a} − ${b} = <span class="qmark" id="qm">?</span></div>${frameHTML([[a,an,'pa']],frameCap(a),{gone:b,still:true})}${optsHTML(a-b,0,max)}`);
+      done(v=>+v===a-b,[NUMW[a],'tolak',NUMW[b],'tinggal',NUMW[a-b]],()=>{const m=$('#qm');m.textContent=a-b;m.classList.add('done');});}}
+  };
+  const avail=()=>Object.keys(T).filter(k=>rec(T[k].p)&&(!T[k].p2||rec(T[k].p2))&&(!T[k].need||T[k].need()));
+  function newQ(){stopVoice();if(!bag.length){bag=shuffle(avail());if(bag[0]===lastT&&bag.length>1)bag.push(bag.shift());}
+    const k=bag.shift();lastT=k;T[k].f();}
   newQ();
 }
 

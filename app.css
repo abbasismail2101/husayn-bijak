@@ -572,3 +572,31 @@ h1{font-size:clamp(1.8rem,3.6vw,2.6rem);line-height:1.08;margin:0;font-weight:80
 @media (max-width:760px),(orientation:portrait) and (max-width:1100px){
   .opt.sy{font-size:min(6.5cqh,11cqw)}
 }
+/* ---- Mengira: Soalan campur ---- */
+.scat{display:grid;grid-template-columns:repeat(var(--c),min(12cqh,9cqw));grid-template-rows:repeat(var(--r),min(12cqh,9cqw));gap:min(1.5cqh,10px);padding:min(2cqh,14px);background:var(--paper);border-radius:24px;box-shadow:inset 0 0 0 3px var(--line)}
+.scat span{display:grid;place-items:center;font-size:min(8.5cqh,6.5cqw);line-height:1;transform:translate(var(--dx),var(--dy)) rotate(var(--rt));animation:popin .45s cubic-bezier(.3,1.6,.5,1) both}
+.opts.cmp{gap:min(4cqw,36px)}
+.opt.grp{--c:var(--card);--cd:var(--shade);background-image:var(--grain);width:auto;height:auto;border-radius:28px;padding:min(1.5cqh,10px)}
+.opt.grp .scat{grid-template-columns:repeat(var(--c),min(8cqh,6cqw));grid-template-rows:repeat(var(--r),min(8cqh,6cqw));background:transparent;box-shadow:none}
+.opt.grp .scat span{font-size:min(6cqh,4.5cqw)}
+.opt.grp.good{--c:var(--leaf-soft);--cd:var(--leaf)}
+.opts.frs{gap:min(2.5cqw,20px)}
+.opt.fr{--c:var(--card);--cd:var(--shade);background-image:var(--grain);width:auto;height:auto;border-radius:24px;padding:min(1.2cqh,8px)}
+.opt.fr .frame{grid-template-columns:repeat(5,min(5.5cqh,3.6cqw));gap:3px;padding:5px}
+.opt.fr .cell{font-size:min(3.8cqh,2.6cqw);border-width:2px;border-radius:8px}
+.opt.fr.good{--c:var(--leaf-soft);--cd:var(--leaf)}
+.nline{display:flex;align-items:center;gap:min(2cqw,18px);font-size:min(13cqh,9cqw);font-weight:800;font-variant-numeric:tabular-nums}
+.nline span{min-width:1.3em;text-align:center;padding:.05em .2em;border-radius:22px;background:var(--card) var(--grain);box-shadow:0 5px 0 var(--shade)}
+.nline span.cur{background:var(--mango-soft)}
+.nline i{font-style:normal;color:var(--ink-2);font-size:.55em}
+@media (max-width:760px),(orientation:portrait) and (max-width:1100px){
+  .scat{grid-template-columns:repeat(var(--c),min(9cqh,15cqw));grid-template-rows:repeat(var(--r),min(9cqh,15cqw))}
+  .scat span{font-size:min(6.5cqh,11cqw)}
+  .opts.cmp{flex-direction:column;align-items:center}
+  .opt.grp .scat{grid-template-columns:repeat(var(--c),min(6cqh,11cqw));grid-template-rows:repeat(var(--r),min(6cqh,11cqw))}
+  .opt.grp .scat span{font-size:min(4.6cqh,8.5cqw)}
+  .opts.frs{flex-direction:column;align-items:center}
+  .opt.fr .frame{grid-template-columns:repeat(5,min(4.6cqh,9cqw))}
+  .opt.fr .cell{font-size:min(3.2cqh,6.4cqw)}
+  .nline{font-size:min(9cqh,13cqw)}
+}
