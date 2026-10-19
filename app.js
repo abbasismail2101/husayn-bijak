@@ -78,7 +78,9 @@ async function playJoined(srcs,gap,tok,caps){
 /* say(parts): each part is a phrase key ('kuda', 'Hebat!') or an Iqra' key ('iq:بa').
    Runs of recorded clips play joined (Iqra' syllables overlap slightly so a word sounds like one word);
    a part with no recording falls back to the device voice (never for Iqra'). */
-async function say(parts,opt={}){
+let curSay=Promise.resolve();
+function say(parts,opt={}){const p=sayInner(parts,opt);curSay=p.catch(()=>{});return p;}
+async function sayInner(parts,opt={}){
   if(!soundOn||parts==null)return;
   const arr=(Array.isArray(parts)?parts:[parts]).filter(p=>p!==''&&p!=null);
   stopVoice();const tok=playTok;duck(true);
@@ -171,7 +173,7 @@ function go(fn,...args){
   const tok=playTok; /* taken before the screen runs: if it speaks on its own, the guide line stays quiet */
   fn(...args);
   ambSync();
-  setTimeout(()=>{const b=$('.m-bubble',main);if(!b||tok!==playTok)return;const t=b.textContent.trim();
+  setTimeout(async()=>{await Promise.race([curSay,sleep(4000)]);const b=$('.m-bubble',main);if(!b||tok!==playTok)return;const t=b.textContent.trim();
     const last=t.split(/(?<=[.!?])\s+/).pop();const u=VOICE[vkey(t)]?t:(VOICE[vkey(last)]?last:null);
     if(u){if(lastSay==null)lastSay=u;talk(1800);say(u);}},450);
 }
@@ -435,6 +437,7 @@ function screenParent(){
       <p class="parentnote"><b>Bintang</b> disimpan dalam tablet ini sahaja.</p>
       <div class="row"><button class="btn soft" id="ambT"></button><button class="btn soft" id="voiceT"></button></div>
       <p class="parentnote">Suara Hafiz dijana dengan ElevenLabs. Bacaan Iqra' guna suara Ayah.</p>
+      <p class="parentnote">Versi app: <b>${(document.querySelector('script[src^="app.js"]')||{src:''}).src.split('v=')[1]||'-'}</b></p>
       <div class="row"><button class="btn soft" id="resetStars">Kosongkan bintang</button><span class="parentnote" id="resetMsg"></span></div>
     </div></div>`;
   const ambLbl=()=>{$('#ambT').innerHTML=`<img src="img/ic-bird.webp" alt="">Bunyi alam: ${ambOn?'hidup':'mati'}`;};ambLbl();
@@ -1076,4 +1079,12 @@ renderSound();renderStars(false);
 window.__hb={judgeWriting,sampleGlyph,CFG};
 screenHome();
 setTimeout(()=>{const l=$('#loader');if(l){l.style.opacity='0';setTimeout(()=>l.remove(),450);}},350);
-if('serviceWorker' in navigator&&location.protocol==='https:'){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
+/* offline support: when a newer version takes over, reload once so the new code runs; then store audio in the background */
+if('serviceWorker' in navigator&&location.protocol==='https:'){
+  const had=!!navigator.serviceWorker.controller;let reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!reloaded){reloaded=true;location.reload();}});
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>{
+    reg.update().catch(()=>{});
+    navigator.serviceWorker.ready.then(r=>{setTimeout(()=>{try{r.active&&r.active.postMessage('warm');}catch(e){}},4000);});
+  }).catch(()=>{});});
+}
