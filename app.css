@@ -541,3 +541,34 @@ h1{font-size:clamp(1.8rem,3.6vw,2.6rem);line-height:1.08;margin:0;font-weight:80
 }
 
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+/* ---- Soalan campur + 7-card menus ---- */
+.acts.n7{grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr))}
+.acts.n7 .actbtn .ai{width:min(20cqh,62%);font-size:min(11cqh,7cqw)}
+.acts.n7 .actbtn b{font-size:min(5cqh,3cqw);text-align:center}
+.actbtn.hot{--c:var(--leaf);--cd:var(--leaf-d)}
+.actbtn.hot .ai{animation:wobble 2.6s ease-in-out infinite}
+.opts.words{max-width:96cqw}
+.opt.wd{--c:var(--card);--cd:var(--shade);color:var(--ink);background-image:var(--grain);width:auto;min-width:min(24cqh,19cqw,190px);padding:0 min(3cqw,26px);height:min(17cqh,14cqw,140px);border-radius:30px;font-family:var(--f-read);font-weight:700;font-size:min(8cqh,5.6cqw)}
+.opt.wd .dw b.m{color:var(--hib)}.opt.wd .dw b.k{color:var(--ink)}
+.opt.wd.good .dw b{color:var(--white)}
+.word b.m{color:var(--hib)}.word b.k{color:var(--ink)}
+.word.gap{gap:.12em}
+.hole{display:inline-grid;place-items:center;min-width:1.6em;border:5px dashed var(--line);border-radius:18px;color:var(--line);padding:0 .1em;line-height:1.1}
+.hole.fill,b.fill{border-style:solid;border-color:var(--leaf);background:var(--leaf-soft,#E4F3DF);color:var(--ink);animation:pop .45s}
+.sent .hole{min-width:2.4em;border-width:4px}
+.bigpic.sm{font-size:min(16cqh,13cqw)}
+.bigear,.bigsyl{width:min(26cqh,20cqw);aspect-ratio:1;border-radius:50%;background:var(--card) var(--grain);box-shadow:0 7px 0 var(--shade),0 12px 20px rgba(80,60,20,.14);display:grid;place-items:center;animation:popin .5s cubic-bezier(.3,1.6,.5,1) both}
+.bigear img{width:55%}
+.bigsyl{font-family:var(--f-read);font-weight:700;font-size:min(12cqh,9cqw);color:var(--hib);border-radius:36px;aspect-ratio:auto;width:auto;padding:min(2cqh,14px) min(4cqw,34px)}
+.bigear:active,.bigsyl:active{transform:translateY(5px);box-shadow:0 2px 0 var(--shade)}
+@media (max-width:760px),(orientation:portrait) and (max-width:1100px){
+  .acts.n7{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .acts.n7 .actbtn:last-child{grid-column:1/-1}
+  .acts.n7 .actbtn .ai{width:min(11cqh,46%);font-size:min(6.5cqh,10cqw)}
+  .acts.n7 .actbtn b{font-size:min(3.6cqh,5.4cqw)}
+  .opt.wd{height:min(12cqh,20cqw);font-size:min(6cqh,9cqw);min-width:min(16cqh,30cqw)}
+  .bigear{width:min(18cqh,30cqw)}
+}
+@media (max-width:760px),(orientation:portrait) and (max-width:1100px){
+  .opt.sy{font-size:min(6.5cqh,11cqw)}
+}

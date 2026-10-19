@@ -6,7 +6,7 @@
 
 /* picture for every word that can be drawn */
 const PIC={
- api:'🔥',itik:'🦆',ikan:'🐟',ibu:'👩',ulat:'🐛',ubat:'💊',ular:'🐍',nanas:'🍍',nuri:'🦜',nipah:'🌴',baju:'👕',biji:'🌰',bunga:'🌸',
+ api:'🔥',ubi:'🍠',itik:'🦆',ikan:'🐟',ibu:'👩',ulat:'🐛',ubat:'💊',ular:'🐍',nanas:'🍍',nuri:'🦜',nipah:'🌴',baju:'👕',biji:'🌰',bunga:'🌸',
  mulut:'👄',mata:'👁️',minum:'🥤',sikat:'🪮',sayur:'🥬',susu:'🥛',kuku:'💅',kipas:'🪭',katak:'🐸',nasi:'🍚',kaki:'🦶',siku:'💪',
  tikus:'🐭',timun:'🥒',yu:'🦈',yoyo:'🪀',cicak:'🦎',cawan:'☕',cili:'🌶️',pisang:'🍌',payung:'☂️',pintu:'🚪',
  buku:'📖',bayi:'👶','kupu-kupu':'🦋',paku:'🔩',muka:'😊',kayu:'🪵',papa:'👨',bapa:'👨',
@@ -25,8 +25,8 @@ const BA=[null,
  {n:1,col:'#F28C28',name:'Buku 1',focus:'a i u · n b',
   units:[{u:'a',sy:['a'],pics:['api']},{u:'i',sy:['i'],pics:['itik','ikan','ibu']},{u:'u',sy:['u'],pics:['ulat','ubat','ular']},
          {u:'n',sy:['na','ni','nu'],pics:['nanas','nuri','nipah']},{u:'b',sy:['ba','bi','bu'],pics:['baju','biji','bunga']}],
-  words:['ana','ani','ina','ini','abu','ibu'],
-  sent:['ini ani.','ini ibu ani.','ini abu.','ini ibu abu.']},
+  words:['ana','ani','ina','ini','abu','ibu','ubi'],
+  sent:['ini ani.','ini ibu ani.','ini abu.','ini ibu abu.','ini ubi. (*)','ini ina. (*)','ini ubi ani. (*)','ini ana. (*)','ini ubi abu. (*)']},
  {n:2,col:'#D93B3B',name:'Buku 2',focus:'m s k',
   units:[{u:'m',sy:['ma','mi','mu'],pics:['mulut','mata','minum']},{u:'s',sy:['sa','si','su'],pics:['sikat','sayur','susu']},{u:'k',sy:['ka','ki','ku'],pics:['kuku','kipas','katak']}],
   words:['mana','susu','sani','nasi','basi','nani','kuku','kaki','siku','suka'],

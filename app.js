@@ -464,7 +464,7 @@ function menuPage({title,intro,color,chips,cards,ask}){
   main.className='full';
   main.innerHTML=stageHTML(color,HERO[color],ask||'Nak main apa?',`
     ${chips?`<div class="levels">${chips}</div>`:''}
-    <div class="acts n${cards.length}">${cards.map((c,i)=>`<button class="actbtn" data-i="${i}" style="--k:${i}"><span class="ai" aria-hidden="true">${c.icon}</span><b>${c.name}</b></button>`).join('')}</div>`,'menu');
+    <div class="acts n${cards.length}">${cards.map((c,i)=>`<button class="actbtn ${c.hot?'hot':''}" data-i="${i}" style="--k:${i}"><span class="ai" aria-hidden="true">${c.icon}</span><b>${c.name}</b></button>`).join('')}</div>`,'menu');
   $$('.actbtn',main).forEach(b=>b.onclick=()=>{sfx('tap');const c=cards[+b.dataset.i];go(c.fn);if(c.say)say(c.say);});
 }
 function numOpts(ans,min=0,max=10){const set=new Set([ans]);for(const c of shuffle([ans-1,ans+1,ans-2,ans+2,ans+3,ans-3])){if(set.size>=3)break;if(c>=min&&c<=max)set.add(c);}return shuffle([...set]);}
@@ -654,8 +654,25 @@ function bookWords(needPic){
   const n=bacaBook();let cur=BA[n].words.filter(w=>!needPic||PIC[w]);
   let prev=[];for(let k=n-1;k>=1;k--)prev=prev.concat(BA[k].words.filter(w=>!needPic||PIC[w]));
   return {cur,prev,all:[...new Set([...cur,...prev])]};}
-function pickWord(needPic,last){const {cur,prev}=bookWords(needPic);const pool=(cur.length>=3&&(Math.random()<.75||!prev.length))?cur:(cur.length?[...cur,...prev]:prev);
-  let w,t=0;do{w=pick(pool);}while(w===last&&++t<8);return w;}
+/* letters learned up to book n; picture words made only of those letters can join the picture games */
+const BA_LET=['','aiunb','msk','tycp','dglr','hjwfz','','oe',''];
+function lettersUpTo(n){let s='';for(let k=1;k<=Math.min(n,7);k++)s+=BA_LET[k];return s;}
+function knownWord(w,n){if(n>=8)return true;const L=lettersUpTo(n),syl=w.split('-').flatMap(sukuKata);
+  return syl.every(x=>[...x].every(c=>L.includes(c))&&(n>=6||/[aiu]$/.test(x)));}
+function picPool(n){return [...new Set(Object.keys(PIC).filter(w=>knownWord(w,n)).concat(BA[n].words.filter(w=>PIC[w])))];}
+function bookWords(needPic){
+  const n=bacaBook();let cur=BA[n].words.filter(w=>!needPic||PIC[w]);
+  let prev=[];for(let k=n-1;k>=1;k--)prev=prev.concat(BA[k].words.filter(w=>!needPic||PIC[w]));
+  if(needPic)prev=prev.concat(picPool(n).filter(w=>!cur.includes(w)));
+  prev=[...new Set(prev)].filter(w=>!cur.includes(w));
+  return {cur,prev,all:[...new Set([...cur,...prev])]};}
+/* recent targets, so the same word does not come back too soon */
+const RECENT=[];
+function fresh(pool){const keep=Math.min(8,Math.floor(pool.length/2));const rec=RECENT.slice(-keep);
+  let c=pool.filter(x=>!rec.includes(x));if(!c.length)c=pool;const v=pick(c);RECENT.push(v);if(RECENT.length>20)RECENT.shift();return v;}
+function pickWord(needPic){const {cur,prev}=bookWords(needPic);
+  const pool=(cur.length>=3&&(Math.random()<.65||!prev.length))?cur:(cur.length?[...cur,...prev]:prev);
+  return fresh(pool.length?pool:Object.keys(PIC));}
 /* syllables learned up to this book (for review grids and distractors) */
 function bookSyl(upto){const out=[];for(let k=1;k<=upto;k++)BA[k].units.forEach(u=>out.push(...u.sy));return [...new Set(out)];}
 /* "dua warna": syllables alternate red and black, as in the books */
@@ -673,8 +690,9 @@ function screenBacaMenu(){
       {icon:'👂',name:'Cari bunyi',fn:screenCariBunyi},
       {icon:'🔤',name:'Baca kata',fn:screenBacaKata},
       {icon:'🧩',name:'Susun',fn:screenBina},
-      {icon:'🖼️',name:'Gambar',fn:screenPilih},
-      {icon:'📖',name:'Ayat',fn:screenAyat}]});
+      ...(picPool(n).length>=3?[{icon:'🖼️',name:'Gambar',fn:screenPilih}]:[]),
+      {icon:'📖',name:'Ayat',fn:screenAyat},
+      {icon:'🎲',name:'Soalan campur',fn:screenKuiz,hot:true}]});
   bindChips('bacaBook',screenBacaMenu);
 }
 function trackHTML(){return `<div class="track" id="track" aria-label="Bintang pusingan ini">${'<i></i>'.repeat(5)}</div>`;}
@@ -735,7 +753,7 @@ function screenBacaKata(){
   actShell('Baca kata',()=>go(screenBacaMenu),'','🐘','Baca kuat-kuat. Tekan suku kata kalau perlu bantuan.','sea');
   let right=0,last=null;
   function newQ(){
-    const w=pickWord(false,last);last=w;lastSay=null;
+    const w=pickWord(false);last=w;lastSay=null;
     $('#q').innerHTML=`<div class="picslot" id="ps">${PIC[w]?'<span class="qm">?</span>':''}</div>
       <div class="word big">${duaWarna(w)}</div>
       <div class="parent"><span class="lbl">Ibu/Ayah: dengar Husayn baca, kemudian tekan</span><button class="btn leaf" id="ok"><img src="img/ic-check.webp" alt="">Betul</button><button class="btn sun" id="ag"><img src="img/ic-undo.webp" alt="">Ulang</button><button class="btn soft" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar</button></div>`;
@@ -748,16 +766,18 @@ function screenBacaKata(){
   newQ();
 }
 function screenBina(){
-  actShell('Susun',()=>go(screenBacaMenu),'','🐘','Ini gambar apa? Susun suku katanya.','sea');
+  actShell('Susun',()=>go(screenBacaMenu),'','🐘','Susun suku katanya.','sea');
   let w,parts,tiles,slots,solved,right=0,last=null;
   function newQ(){
-    w=pickWord(true,last);last=w;parts=sukuKata(w);
+    w=Math.random()<.6?pickWord(true):pickWord(false);last=w;parts=w.split('-').flatMap(sukuKata);if(parts.length<2){w=pickWord(true);parts=w.split('-').flatMap(sukuKata);}
     const pool=bookSyl(bacaBook()).concat(bookWords(false).all.flatMap(sukuKata));
     const others=shuffle([...new Set(pool)].filter(s=>!parts.includes(s))).slice(0,parts.length>3?1:2);
     tiles=shuffle([...parts,...others]).map(t=>({t,used:false}));slots=parts.map(()=>null);solved=false;lastSay=w;render(true);
+    if(PIC[w])mascotSay('Ini gambar apa? Susun suku katanya.',null,!!VOICE[vkey('Ini gambar apa? Susun suku katanya.')]);
+    else{mascotSay('Dengar, kemudian susun suku katanya.',null,false);setTimeout(()=>say(w),350);}
   }
   function render(fresh){
-    $('#q').innerHTML=`<div class="bigpic" ${fresh?'':'style="animation:none"'}>${PIC[w]}</div>
+    $('#q').innerHTML=`${PIC[w]?`<div class="bigpic" ${fresh?'':'style="animation:none"'}>${PIC[w]}</div>`:`<button class="bigear" id="ear" ${fresh?'':'style="animation:none"'}><img src="img/ic-speaker.webp" alt="Dengar"></button>`}
       <div class="slots">${slots.map((s,k)=>`<button class="slot ${s!==null?'filled':''} ${solved?'good':''}" data-k="${k}">${s!==null?tiles[s].t:''}</button>`).join('')}</div>
       <div class="tiles">${tiles.map((t,i)=>`<button class="syl ${t.used?'used':''}" data-i="${i}" ${solved?'disabled':''}>${t.t}</button>`).join('')}</div>
       <div class="row center">${solved?'<button class="btn big next" id="nx">Seterusnya <i class="tri"></i></button>':'<button class="btn soft" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar</button>'}</div>`;
@@ -765,7 +785,7 @@ function screenBina(){
       const i=+b.dataset.i;if(solved||tiles[i].used)return;const k=slots.indexOf(null);if(k<0)return;
       tiles[i].used=true;slots[k]=i;sfx('tap');say(tiles[i].t);render();if(slots.indexOf(null)<0)check();});
     $$('.slot',main).forEach(b=>b.onclick=()=>{const k=+b.dataset.k;if(solved||slots[k]===null)return;tiles[slots[k]].used=false;slots[k]=null;render();});
-    if(solved)$('#nx').onclick=newQ;else $('#hear').onclick=()=>say(w);
+    if(solved)$('#nx').onclick=newQ;else $('#hear').onclick=()=>say(w);if($('#ear'))$('#ear').onclick=()=>say(w);
   }
   function check(){
     const ok=slots.every((s,k)=>tiles[s].t===parts[k]);
@@ -779,7 +799,7 @@ function screenPilih(){
   actShell('Gambar',()=>go(screenBacaMenu),'','🐘','Baca perkataan, kemudian tekan gambarnya.','sea');
   let right=0,last=null;
   function newQ(){
-    lastSay=null;const w=pickWord(true,last);last=w;
+    lastSay=null;const w=pickWord(true);last=w;
     const all=bookWords(true).all.concat(Object.keys(PIC));const opts=[w];
     for(const x of shuffle(all)){if(opts.length>=3)break;if(!opts.some(o=>PIC[o]===PIC[x]))opts.push(x);}
     $('#q').innerHTML=`<div class="word big">${duaWarna(w)}</div>
@@ -791,16 +811,112 @@ function screenPilih(){
   }
   newQ();
 }
+function sayAyat(t){return say(VOICE[vkey(t)]?t:t.replace(/[.,?!]/g,'').split(' '));}
+function sylW(w){return w.split('-').flatMap(sukuKata);}
+/* n distractors for target from pool; about half share a syllable with it so they are not too easy */
+function distract(target,pool,n,same=x=>x){
+  const cand=shuffle([...new Set(pool)].filter(x=>x!==target&&same(x)!==same(target)));
+  const ts=new Set(sylW(String(target)));
+  const near=cand.filter(x=>sylW(String(x)).some(y=>ts.has(y))),far=cand.filter(x=>!near.includes(x));
+  const out=[];const half=Math.ceil(n/2);
+  for(const x of near){if(out.length>=half)break;out.push(x);}
+  for(const x of far.concat(near)){if(out.length>=n)break;if(!out.includes(x))out.push(x);}
+  return out;}
+/* SOALAN CAMPUR: one question type after another, never the same type twice in a row */
+function screenKuiz(){
+  actShell('Soalan campur',()=>go(screenBacaMenu),'','🐘','Jom jawab soalan!','sea');
+  const b=bookData(),n=b.n;let right=0,bag=[],lastT=null;
+  const words=()=>bookWords(false),pics=()=>bookWords(true).all;
+  const mine=[...new Set(b.units.flatMap(u=>u.sy))],old=n>1?bookSyl(n-1):[],allSyl=[...new Set([...mine,...old])];
+  const multi=w=>sylW(w).length>=2;
+  const T={
+    dengarKata(){ // hear a word, tap the written word
+      const w=pickWord(false),opts=shuffle([w,...distract(w,words().all,2)]);
+      ask('Dengar, kemudian tekan bunyi yang betul.',false);
+      q(`<button class="btn big hear" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar</button>${wordOpts(opts)}`);
+      lastSay=w;$('#hear').onclick=()=>say(w);setTimeout(()=>say(w),300);
+      done(v=>v===w,w);},
+    gambarKata(){ // picture, tap its word
+      const w=pickWord(true),opts=shuffle([w,...distract(w,pics().concat(words().all),2,x=>PIC[x]||x)]);
+      ask('Ini gambar apa? Tekan perkataannya.');
+      q(`<div class="bigpic">${PIC[w]}</div>${wordOpts(opts)}`);lastSay=null;
+      done(v=>v===w,w);},
+    kataGambar(){ // word, tap its picture
+      const w=pickWord(true),pool=pics().concat(Object.keys(PIC)),opts=[w];
+      for(const x of shuffle(pool)){if(opts.length>=3)break;if(!opts.some(o=>PIC[o]===PIC[x]))opts.push(x);}
+      ask('Baca perkataan, kemudian tekan gambarnya.');
+      q(`<div class="word big">${duaWarna(w)}</div><div class="opts" id="op">${shuffle(opts).map(o=>`<button class="opt pic" data-v="${o}" aria-label="gambar">${PIC[o]}</button>`).join('')}</div>`);
+      $$('.word b',main).forEach(x=>x.onclick=()=>say(x.textContent));lastSay=null;
+      done(v=>v===w,w);},
+    sukuHilang(){ // one syllable is missing
+      let w,t=0;do{w=pickWord(Math.random()<.5);}while(!multi(w)&&++t<20);
+      const parts=sylW(w),k=rint(0,parts.length-1),ans=parts[k],opts=shuffle([ans,...distract(ans,allSyl,2)]);
+      ask('Suku kata mana yang hilang?');
+      q(`${PIC[w]?`<div class="bigpic sm">${PIC[w]}</div>`:''}<div class="word big gap">${parts.map((x,i)=>i===k?'<b class="hole" id="hole">?</b>':`<b class="${i%2?'k':'m'}">${x}</b>`).join('')}</div>
+        <div class="opts syls" id="op">${opts.map(o=>`<button class="opt sy" data-v="${o}">${o}</button>`).join('')}</div>`);
+      lastSay=null;$$('.opt',main).forEach(x=>x.addEventListener('click',()=>say(x.dataset.v)));
+      done(v=>v===ans,w,()=>{const h=$('#hole');h.textContent=ans;h.className=k%2?'k fill':'m fill';});},
+    dengarSuku(){ // hear a syllable, tap it
+      let t;do{t=(old.length&&Math.random()<.3)?pick(old):pick(mine);}while(t===lastSyl&&mine.length>1);lastSyl=t;
+      const opts=shuffle([t,...shuffle(allSyl.filter(x=>x!==t)).slice(0,n<=1?2:3)]);
+      ask('Dengar, kemudian tekan bunyi yang betul.',false);
+      q(`<button class="btn big hear" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar</button><div class="opts syls" id="op">${opts.map(o=>`<button class="opt sy" data-v="${o}">${o}</button>`).join('')}</div>`);
+      lastSay=t;$('#hear').onclick=()=>say(t);setTimeout(()=>say(t),300);
+      done(v=>v===t,t);},
+    mulaBunyi(){ // which word starts with this syllable?
+      const pool=words().all;let w,t=0,first,others;
+      do{w=pickWord(false);first=sylW(w)[0];others=pool.filter(x=>sylW(x)[0]!==first);}while(others.length<2&&++t<20);
+      if(others.length<2)return T.dengarKata();
+      const opts=shuffle([w,...distract(w,others,2)]);
+      ask(`Mana yang mula dengan bunyi "${first}"?`);
+      q(`<button class="bigsyl" id="hear">${first}</button>${wordOpts(opts)}`);
+      lastSay=first;$('#hear').onclick=()=>say(first);setTimeout(()=>say(first),300);
+      done(v=>v===w,w);},
+    kiraSuku(){ // how many syllables?
+      const w=pickWord(Math.random()<.5),k=sylW(w).length,opts=numOpts(k,1,5);
+      ask('Ada berapa suku kata? Tekan setiap suku kata dulu.');
+      q(`${PIC[w]?`<div class="bigpic sm">${PIC[w]}</div>`:''}<div class="word big gap">${sylW(w).map((x,i)=>`<b class="${i%2?'k':'m'}">${x}</b>`).join('')}</div>
+        <div class="opts" id="op">${opts.map(o=>`<button class="opt" data-v="${o}">${o}</button>`).join('')}</div>`);
+      $$('.word b',main).forEach(x=>x.onclick=()=>{x.classList.remove('lit');void x.offsetWidth;x.classList.add('lit');say(x.textContent);});lastSay=null;
+      done(v=>+v===k,w);},
+    ayatHilang(){ // which word is missing from the sentence?
+      const old2=BA.slice(1,n).flatMap(x=>x.sent),pool=Math.random()<.7||!old2.length?b.sent:old2;
+      const raw=fresh(pool).replace(' (*)',''),ws=raw.split(' ');
+      const cand=ws.map((x,i)=>[x.replace(/[.,?!]/g,''),i]).filter(([x])=>x.length>=3&&!/^(ini|itu|mana|saya|ada|di|dan)$/i.test(x)&&(words().all.includes(x.toLowerCase())||PIC[x.toLowerCase()]));
+      if(!cand.length)return T.dengarKata();
+      const [ans,i]=pick(cand),low=ans.toLowerCase(),inSent=new Set(ws.map(x=>x.replace(/[.,?!]/g,'').toLowerCase()));
+      const opts=shuffle([low,...distract(low,words().all.filter(x=>!inSent.has(x)),2)]);
+      const tail=ws[i].slice(ans.length);
+      ask('Perkataan mana yang hilang?');
+      q(`<div class="sent">${ws.map((x,j)=>j===i?`<span class="hole" id="hole">?</span>${tail}`:`<button>${duaWarna(x)}</button>`).join(' ')}</div>${wordOpts(opts)}`);
+      $$('.sent button',main).forEach(x=>x.onclick=()=>say(x.textContent.replace(/[.,?!]/g,'')));lastSay=null;
+      done(v=>v===low,null,()=>{const h=$('#hole');h.textContent=ans;h.classList.add('fill');sayAyat(raw);},true);}
+  };
+  let lastSyl=null;
+  const q=html=>{$('#q').innerHTML=html+'<div class="row center" id="nxr"></div>';};
+  const wordOpts=opts=>`<div class="opts words" id="op">${opts.map(o=>`<button class="opt wd" data-v="${o}">${duaWarna(o)}</button>`).join('')}</div>`;
+  function ask(text,speak=true){mascotSay(text,null,false);if(speak&&VOICE[vkey(text)])say(text);}
+  function done(isRight,w,onOk,quiet){
+    bindOpts($('#op'),isRight,()=>{right++;setScore(right);if(onOk)onOk();const p=pick(PRAISE);
+      mascotSay(p,'happy',true,quiet?[p]:(w?[p,w]:[p]));addStars(1);celebrate(right%5===0?3:2);
+      $('#nxr').innerHTML='<button class="btn big next" id="nx">Seterusnya <i class="tri"></i></button>';$('#nx').onclick=newQ;});}
+  function types(){return Object.keys(T).filter(k=>!(/gambar/i.test(k))||pics().length>=3);}
+  function newQ(){
+    if(!bag.length){bag=shuffle(types());if(bag[0]===lastT&&bag.length>1)bag.push(bag.shift());}
+    const t=bag.shift();lastT=t;stopVoice();T[t]();}
+  newQ();
+}
 function screenAyat(){
   actShell('Ayat',()=>go(screenBacaMenu),'','🐘','Baca perlahan-lahan ya.','sea');
-  const b=bookData();let order=shuffle(b.sent),idx=0,right=0;
+  const b=bookData();const old=BA.slice(1,b.n).flatMap(x=>x.sent);
+  let order=shuffle(b.sent.concat(shuffle(old).slice(0,Math.ceil(b.sent.length/2)))),idx=0,right=0;
   function render(){
     const raw=order[idx%order.length],t=raw.replace(' (*)','');lastSay=null;
     const pw=t.toLowerCase().replace(/[.,?!]/g,'').split(' ').find(x=>PIC[x]);
     $('#q').innerHTML=`<div class="bigpic">${pw?PIC[pw]:'📖'}</div><div class="sent">${t.split(' ').map(x=>`<button>${duaWarna(x)}</button>`).join('')}</div>
       <div class="parent"><span class="lbl">Ibu/Ayah: dengar Husayn baca, kemudian tekan</span><button class="btn leaf" id="ok"><img src="img/ic-check.webp" alt="">Betul</button><button class="btn sun" id="ag"><img src="img/ic-undo.webp" alt="">Ulang</button><button class="btn soft" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar ayat</button></div>`;
     $$('.sent button',main).forEach(x=>x.onclick=()=>{x.classList.add('lit');say(x.textContent.replace(/[.,?!]/g,''));setTimeout(()=>x.classList.remove('lit'),1200);});
-    $('#hear').onclick=()=>say(t);
+    $('#hear').onclick=()=>sayAyat(t);
     $('#ok').onclick=()=>{right++;setScore(right);mascotSay(pick(PRAISE),'happy');addStars(1);celebrate(right%4===0?3:2);idx++;setTimeout(render,1100);};
     $('#ag').onclick=()=>mascotSay('Tak apa. Baca sekali lagi, satu-satu perkataan.');
   }
