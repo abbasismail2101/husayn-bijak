@@ -184,6 +184,8 @@ function go(fn,...args){
 }
 
 /* ---------- mascot & celebration ---------- */
+/* pick, but never the same one twice in a row */
+const _nr={};function pickNR(a,k){let v,t=0;do{v=pick(a);}while(v===_nr[k]&&a.length>1&&++t<10);_nr[k]=v;return v;}
 const PRAISE=['Hebat!','Pandainya!','Bagus sangat!','Wah, betul!','MasyaAllah, pandai!','Syabas, Husayn!'];
 const TRY=['Hampir! Cuba lagi.','Tak apa, cuba sekali lagi.','Jom cuba lagi, boleh punya!'];
 const PARADE=['🐘','🦒','🐢','🐒','🦁','🐯','🐰','🦓','🐪','🦘','🐧','🐊'];
@@ -479,7 +481,7 @@ function bindOpts(box,isRight,onRight){window.__opt={box,isRight};
   $$('.opt',box).forEach(b=>b.onclick=()=>{
     if(box.dataset.done)return;
     if(isRight(b.dataset.v)){box.dataset.done='1';b.classList.add('good');onRight(b);}
-    else{b.classList.add('bad');b.disabled=true;mascotSay(pick(TRY),'sad');}
+    else{b.classList.add('bad');b.disabled=true;mascotSay(pickNR(TRY,'try'),'sad');}
   });
 }
 
@@ -730,7 +732,7 @@ function screenHurufBaru(){
     $$('.un',main).forEach(x=>x.onclick=()=>{ui=+x.dataset.k;render();});
     const seen=new Set();
     $$('.sg',main).forEach(x=>x.onclick=()=>{x.classList.add('lit');say(x.dataset.s);seen.add(x);
-      if(seen.size===grid.length&&!$('#nx')){const p=pick(PRAISE);mascotSay(p,'happy',true,[p]);addStars(1);setScore(ui+1);celebrate(2);
+      if(seen.size===grid.length&&!$('#nx')){const p=pickNR(PRAISE,'pr');mascotSay(p,'happy',true,[p]);addStars(1);setScore(ui+1);celebrate(2);
         $('#nxr').innerHTML=ui<b.units.length-1?'<button class="btn big next" id="nx">Seterusnya <i class="tri"></i></button>':'<button class="btn big next" id="nx">Main Cari bunyi <i class="tri"></i></button>';
         $('#nx').onclick=()=>{if(ui<b.units.length-1){ui++;render();}else go(screenCariBunyi);};}});
     lastSay=u.sy;
@@ -748,7 +750,7 @@ function screenCariBunyi(){
     $('#q').innerHTML=`<button class="btn big hear" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar</button>
       <div class="opts syls" id="op">${opts.map(o=>`<button class="opt sy" data-v="${o}">${o}</button>`).join('')}</div><div class="row center" id="nxr"></div>`;
     lastSay=t;$('#hear').onclick=()=>say(t);setTimeout(()=>say(t),300);
-    bindOpts($('#op'),v=>v===t,()=>{right++;setScore(right);const p=pick(PRAISE);mascotSay(p,'happy',true,[p,t]);addStars(1);celebrate(right%5===0?3:2);
+    bindOpts($('#op'),v=>v===t,()=>{right++;setScore(right);const p=pickNR(PRAISE,'pr');mascotSay(p,'happy',true,[p,t]);addStars(1);celebrate(right%5===0?3:2);
       $('#nxr').innerHTML='<button class="btn big next" id="nx">Seterusnya <i class="tri"></i></button>';$('#nx').onclick=newQ;});
   }
   newQ();
@@ -765,20 +767,20 @@ function screenBacaKata(){
     $('#hear').onclick=()=>say(w);
     $('#ag').onclick=()=>{mascotSay('Tak apa. Baca sekali lagi, satu-satu suku kata.');(async()=>{for(const x of $$('.word b',main)){x.classList.add('lit');await sleep(650);x.classList.remove('lit');}})();};
     $('#ok').onclick=()=>{if($('#ok').disabled)return;$('#ok').disabled=true;right++;setScore(right);if(PIC[w])$('#ps').innerHTML=`<span class="pop">${PIC[w]}</span>`;
-      const p=pick(PRAISE);mascotSay(p,'happy',true,[p,w]);addStars(1);celebrate(right%5===0?3:2);setTimeout(newQ,1900);};
+      const p=pickNR(PRAISE,'pr');mascotSay(p,'happy',true,[p,w]);addStars(1);celebrate(right%5===0?3:2);setTimeout(newQ,1900);};
   }
   newQ();
 }
 function screenBina(){
   actShell('Susun',()=>go(screenBacaMenu),'','🐘','Susun suku katanya.','sea');
-  let w,parts,tiles,slots,solved,right=0,last=null;
+  let w,parts,tiles,slots,solved,right=0,last=null,told=false,toldE=false;
   function newQ(){
     w=Math.random()<.6?pickWord(true):pickWord(false);last=w;parts=w.split('-').flatMap(sukuKata);if(parts.length<2){w=pickWord(true);parts=w.split('-').flatMap(sukuKata);}
     const pool=bookSyl(bacaBook()).concat(bookWords(false).all.flatMap(sukuKata));
     const others=shuffle([...new Set(pool)].filter(s=>!parts.includes(s))).slice(0,parts.length>3?1:2);
     tiles=shuffle([...parts,...others]).map(t=>({t,used:false}));slots=parts.map(()=>null);solved=false;lastSay=w;render(true);
-    if(PIC[w])mascotSay('Ini gambar apa? Susun suku katanya.',null,!!VOICE[vkey('Ini gambar apa? Susun suku katanya.')]);
-    else{mascotSay('Dengar, kemudian susun suku katanya.',null,false);setTimeout(()=>say(w),350);}
+    if(PIC[w]){const t='Ini gambar apa? Susun suku katanya.';mascotSay(t,null,!told&&!!VOICE[vkey(t)]);told=true;}
+    else{const t='Dengar, kemudian susun suku katanya.';mascotSay(t,null,false);const pp=(!toldE&&VOICE[vkey(t)])?[t,w]:[w];toldE=true;setTimeout(()=>say(pp),350);}
   }
   function render(fresh){
     $('#q').innerHTML=`${PIC[w]?`<div class="bigpic" ${fresh?'':'style="animation:none"'}>${PIC[w]}</div>`:`<button class="bigear" id="ear" ${fresh?'':'style="animation:none"'}><img src="img/ic-speaker.webp" alt="Dengar"></button>`}
@@ -787,14 +789,14 @@ function screenBina(){
       <div class="row center">${solved?'<button class="btn big next" id="nx">Seterusnya <i class="tri"></i></button>':'<button class="btn soft" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar</button>'}</div>`;
     $$('.syl',main).forEach(b=>b.onclick=()=>{
       const i=+b.dataset.i;if(solved||tiles[i].used)return;const k=slots.indexOf(null);if(k<0)return;
-      tiles[i].used=true;slots[k]=i;sfx('tap');say(tiles[i].t);render();if(slots.indexOf(null)<0)check();});
+      tiles[i].used=true;slots[k]=i;sfx('tap');if(hasAudio(tiles[i].t))say(tiles[i].t);render();if(slots.indexOf(null)<0)check();});
     $$('.slot',main).forEach(b=>b.onclick=()=>{const k=+b.dataset.k;if(solved||slots[k]===null)return;tiles[slots[k]].used=false;slots[k]=null;render();});
     if(solved)$('#nx').onclick=newQ;else $('#hear').onclick=()=>say(w);if($('#ear'))$('#ear').onclick=()=>say(w);
   }
   function check(){
     const ok=slots.every((s,k)=>tiles[s].t===parts[k]);
-    if(ok){solved=true;right++;setScore(right);render();const p=pick(PRAISE);mascotSay(`${p} ${parts.join('-')}, ${w}.`,'happy',true,[p,w]);addStars(1);celebrate(right%5===0?3:2);}
-    else{$$('.slot',main).forEach((b,k)=>{if(tiles[slots[k]].t!==parts[k])b.classList.add('bad');});mascotSay(pick(TRY),'sad');
+    if(ok){solved=true;right++;setScore(right);render();const p=pickNR(PRAISE,'pr');mascotSay(`${p} ${parts.join('-')}, ${w}.`,'happy',true,[p,w]);addStars(1);celebrate(right%5===0?3:2);}
+    else{$$('.slot',main).forEach((b,k)=>{if(tiles[slots[k]].t!==parts[k])b.classList.add('bad');});mascotSay(pickNR(TRY,'try'),'sad');
       setTimeout(()=>{slots=slots.map((s,k)=>{if(s!==null&&tiles[s].t!==parts[k]){tiles[s].used=false;return null;}return s;});render();},1000);}
   }
   newQ();
@@ -810,7 +812,7 @@ function screenPilih(){
       <div class="opts" id="op">${shuffle(opts).map(o=>`<button class="opt pic" data-v="${o}" aria-label="gambar">${PIC[o]}</button>`).join('')}</div>
       <div class="row center" id="nxr"></div>`;
     $$('.word b',main).forEach(x=>x.onclick=()=>say(x.textContent));
-    bindOpts($('#op'),v=>v===w,()=>{right++;setScore(right);const p=pick(PRAISE);mascotSay(`${p} Itu ${w}.`,'happy',true,[p,'itu',w]);addStars(1);celebrate(right%5===0?3:2);
+    bindOpts($('#op'),v=>v===w,()=>{right++;setScore(right);const p=pickNR(PRAISE,'pr');mascotSay(`${p} Itu ${w}.`,'happy',true,[p,'itu',w]);addStars(1);celebrate(right%5===0?3:2);
       $('#nxr').innerHTML='<button class="btn big next" id="nx">Seterusnya <i class="tri"></i></button>';$('#nx').onclick=newQ;});
   }
   newQ();
@@ -917,7 +919,7 @@ function screenKuiz(){
       ask('Perkataan mana yang hilang?');
       q(`<div class="sent">${ws.map((x,j)=>j===i?`<span class="hole" id="hole">?</span>${tail}`:`<button>${duaWarna(x)}</button>`).join(' ')}</div>${wordOpts(opts)}`);
       $$('.sent button',main).forEach(x=>x.onclick=()=>say(x.textContent.replace(/[.,?!]/g,'')));lastSay=null;
-      done(v=>v===low,null,()=>{const h=$('#hole');h.textContent=ans;h.classList.add('fill');sayAyat(raw);},true);}
+      done(v=>v===low,VOICE[vkey(raw)]?[raw]:raw.replace(/[.,?!]/g,'').split(' '),()=>{const h=$('#hole');h.textContent=ans;h.classList.add('fill');});}
   };
   let lastSyl=null;
   const q=html=>{$('#q').innerHTML=html+'<div class="row center" id="nxr"></div>';};
@@ -929,8 +931,8 @@ function screenKuiz(){
     if(speak&&VOICE[vkey(at)]&&!told.has(at)){told.add(at);parts.push(at);}
     if(extra)parts.push(...extra);lastSay=extra?extra:(VOICE[vkey(at)]?at:null);if(parts.length)setTimeout(()=>say(parts),200);}
   function done(isRight,w,onOk,quiet){
-    bindOpts($('#op'),isRight,()=>{right++;setScore(right);if(onOk)onOk();const p=pick(PRAISE);
-      mascotSay(p,'happy',true,quiet?[p]:(w?[p,w]:[p]));addStars(1);celebrate(right%5===0?3:2);
+    bindOpts($('#op'),isRight,()=>{right++;setScore(right);if(onOk)onOk();const p=pickNR(PRAISE,'pr');
+      mascotSay(p,'happy',true,quiet?[p]:(Array.isArray(w)?[p,...w]:(w?[p,w]:[p])));addStars(1);celebrate(right%5===0?3:2);
       $('#nxr').innerHTML='<button class="btn big next" id="nx">Seterusnya <i class="tri"></i></button>';$('#nx').onclick=newQ;});}
   function types(){return Object.keys(T).filter(k=>!(/gambar/i.test(k))||pics().length>=3);}
   function newQ(){
@@ -948,7 +950,7 @@ function screenAyat(){
       <div class="parent"><span class="lbl">Ibu/Ayah: dengar Husayn baca, kemudian tekan</span><button class="btn leaf" id="ok"><img src="img/ic-check.webp" alt="">Betul</button><button class="btn sun" id="ag"><img src="img/ic-undo.webp" alt="">Ulang</button><button class="btn soft" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar ayat</button></div>`;
     $$('.sent button',main).forEach(x=>x.onclick=()=>{x.classList.add('lit');say(x.textContent.replace(/[.,?!]/g,''));setTimeout(()=>x.classList.remove('lit'),1200);});
     $('#hear').onclick=()=>sayAyat(t);
-    $('#ok').onclick=()=>{if($('#ok').disabled)return;$('#ok').disabled=true;right++;setScore(right);mascotSay(pick(PRAISE),'happy');addStars(1);celebrate(right%4===0?3:2);setTimeout(render,1100);};
+    $('#ok').onclick=()=>{if($('#ok').disabled)return;$('#ok').disabled=true;right++;setScore(right);mascotSay(pickNR(PRAISE,'pr'),'happy');addStars(1);celebrate(right%4===0?3:2);setTimeout(render,1100);};
     $('#ag').onclick=()=>mascotSay('Tak apa. Baca sekali lagi, satu-satu perkataan.');
   }
   render();
@@ -1003,7 +1005,7 @@ function deal(key,make){let d=DECKS[key];if(!d||!d.length){const all=make();d=DE
 function range(a,b){const o=[];for(let i=a;i<=b;i++)o.push(i);return o;}
 let _lastAn=[];
 function pickAnimal(not){const c=ANIMALS.filter(x=>x!==not&&!_lastAn.includes(x));const a=pick(c.length?c:ANIMALS);_lastAn.push(a);if(_lastAn.length>4)_lastAn.shift();return a;}
-function winRound(r,parts){setScore(r);const p=pick(PRAISE);mascotSay(p,'happy',true,[p,...(parts||[])]);addStars(1);celebrate(r%5===0?3:2);}
+function winRound(r,parts){setScore(r);const p=pickNR(PRAISE,'pr');mascotSay(p,'happy',true,[p,...(parts||[])]);addStars(1);celebrate(r%5===0?3:2);}
 
 function screenKiraMenu(){
   curModule=1;
@@ -1266,7 +1268,7 @@ function screenIqraBaca(){
   $('#ok').onclick=()=>{count++;setScore(count);addStars(1);si++;
     if(si>=sets.length){const d=iqDone();d[n+':'+p]=true;store.set('iqDone',d);mascotSay('MasyaAllah! Habis satu muka.','happy');celebrate(3);
       if(p<b.pages.length-1){p++;store.set('iqPage'+n,p);}setTimeout(loadPage,1600);}
-    else{mascotSay(pick(PRAISE),'happy');celebrate(2);setTimeout(show,900);}};
+    else{mascotSay(pickNR(PRAISE,'pr'),'happy');celebrate(2);setTimeout(show,900);}};
   $('#ag').onclick=async()=>{mascotSay('Tak apa. Baca sekali lagi, perlahan-lahan.');for(const el of $$('#rows .iq',main)){el.classList.add('reveal');await sleep(700);el.classList.remove('reveal');}};
   lbl();loadPage();
 }
@@ -1278,13 +1280,13 @@ function screenIqraHuruf(){
     let pool=HIJ.filter(h=>h.c!=='ء');
     if(n===1){const p=iqPage(),upto=(IQ[1].pages[p].gen||{}).upto;if(upto!=null){const L=IQ1_ORDER.slice(0,upto+1);pool=pool.filter(h=>L.includes(h.c));}}
     const v=n===3?pick(['a','i','u']):'a';
-    const lab=h=>readOf(h,v);const ans=pick(pool);const opts=[ans];
+    const lab=h=>readOf(h,v);const ans=pool[pool.findIndex(h=>h.c===fresh(pool.map(h=>h.c),'th'+n))];const opts=[ans];
     for(const h of shuffle(pool)){if(opts.length>=3)break;if(!opts.some(o=>lab(o)===lab(h)))opts.push(h);}
     const r2a=Math.random()<.5||opts.length<2;
     $('#q').innerHTML=(r2a?`<div class="iqprompt">Mana satu <b>${lab(ans)}</b>?</div><div class="opts" id="op">${shuffle(opts).map(o=>`<button class="opt ar" data-v="${o.c}">${(o.c==='ا'?'أ':o.c)+MARK[v]}</button>`).join('')}</div>`
       :`<div class="iqbig">${(ans.c==='ا'?'أ':ans.c)+MARK[v]}</div><div class="iqprompt">Ini bacaannya apa?</div><div class="opts" id="op">${shuffle(opts).map(o=>`<button class="opt rm" data-v="${o.c}">${lab(o)}</button>`).join('')}</div>`)+'<div class="row center" id="nxr"></div>';
     lastSay=r2a?iqKey(ans,v):null;if(r2a)say(iqKey(ans,v));
-    bindOpts($('#op'),x=>x===ans.c,()=>{right++;setScore(right);{const p=pick(PRAISE);mascotSay(`${p} Itu ${lab(ans)}.`,'happy',true,[p,'itu',iqKey(ans,v)]);}addStars(1);celebrate(right%5===0?3:2);$('#nxr').innerHTML='<button class="btn big next" id="nx">Seterusnya <i class="tri"></i></button>';$('#nx').onclick=newQ;});
+    bindOpts($('#op'),x=>x===ans.c,()=>{right++;setScore(right);{const p=pickNR(PRAISE,'pr');mascotSay(`${p} Itu ${lab(ans)}.`,'happy',true,[p,'itu',iqKey(ans,v)]);}addStars(1);celebrate(right%5===0?3:2);$('#nxr').innerHTML='<button class="btn big next" id="nx">Seterusnya <i class="tri"></i></button>';$('#nx').onclick=newQ;});
   }
   newQ();
 }
