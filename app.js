@@ -168,9 +168,10 @@ function go(fn,...args){
   if(cleanup){try{cleanup();}catch(e){}cleanup=null;}
   if(!keepVoice)stopVoice();keepVoice=false;ambBlocked=false;lastSay=null;document.body.classList.remove('quiet');
   main.className='';main.scrollTop=0;
+  const tok=playTok; /* taken before the screen runs: if it speaks on its own, the guide line stays quiet */
   fn(...args);
   ambSync();
-  const tok=playTok;setTimeout(()=>{const b=$('.m-bubble',main);if(!b||tok!==playTok)return;const t=b.textContent.trim();
+  setTimeout(()=>{const b=$('.m-bubble',main);if(!b||tok!==playTok)return;const t=b.textContent.trim();
     const last=t.split(/(?<=[.!?])\s+/).pop();const u=VOICE[vkey(t)]?t:(VOICE[vkey(last)]?last:null);
     if(u){if(lastSay==null)lastSay=u;talk(1800);say(u);}},450);
 }
