@@ -789,7 +789,7 @@ function screenBina(){
       <div class="row center">${solved?'<button class="btn big next" id="nx">Seterusnya <i class="tri"></i></button>':'<button class="btn soft" id="hear"><img src="img/ic-speaker.webp" alt="">Dengar</button>'}</div>`;
     $$('.syl',main).forEach(b=>b.onclick=()=>{
       const i=+b.dataset.i;if(solved||tiles[i].used)return;const k=slots.indexOf(null);if(k<0)return;
-      tiles[i].used=true;slots[k]=i;sfx('tap');if(hasAudio(tiles[i].t))say(tiles[i].t);render();if(slots.indexOf(null)<0)check();});
+      tiles[i].used=true;slots[k]=i;sfx('tap');const last=slots.indexOf(null)<0;if(!last&&hasAudio(tiles[i].t))say(tiles[i].t);render();if(last)check();});
     $$('.slot',main).forEach(b=>b.onclick=()=>{const k=+b.dataset.k;if(solved||slots[k]===null)return;tiles[slots[k]].used=false;slots[k]=null;render();});
     if(solved)$('#nx').onclick=newQ;else $('#hear').onclick=()=>say(w);if($('#ear'))$('#ear').onclick=()=>say(w);
   }
@@ -819,6 +819,8 @@ function screenPilih(){
 }
 /* Sentences: the book's own, plus simple sentences built from the word bank. Every word in a built sentence
    uses letters already learned and has its own recording, so "Dengar ayat" reads it word by word. */
+const PET='kucing ayam itik arnab ikan burung kambing lembu kuda biri-biri angsa kerbau'.split(' '),
+  NOLIKE='buaya ular lipas nyamuk labah-labah lebah tikus semut siput ulat sawa sotong ketam katak'.split(' ');
 const BIG='gajah zirafah unta kerbau lembu beruang paus harimau singa buaya kuda'.split(' '),SMALL='semut nyamuk lebah tikus siput ulat lipas itik arnab'.split(' ');
 const _sent={};
 function sentPool(n){if(_sent[n]&&_sent[n].v===VOICE_VER)return _sent[n].a;
@@ -826,10 +828,10 @@ function sentPool(n){if(_sent[n]&&_sent[n].v===VOICE_VER)return _sent[n].a;
   const ppl=f(['ibu','bapa','ani','abu','sani','nani','ali','amin','mama','papa','kakak','adik','abang','datuk','nenek','guru']);
   const an=f(CAT.haiwan||[]),food=f((CAT.makanan||[]).concat(['nasi','roti','ikan','kek'])),drink=f(['susu','kopi','air']),thing=f(CAT.benda||[]);
   const seen=f([...new Set(an.concat(thing,food))]).filter(w=>PIC[w]);const o=[];
-  const cap=x=>n>=6?x.replace(/^./,c=>c.toUpperCase()).replace(/\b(ali|ani|abu|sani|nani|amin|budin)\b/g,c=>c[0].toUpperCase()+c.slice(1)):x;
+  const cap=x=>n>=6?x.replace(/(^|[?.!] )([a-z])/g,(m,a,c)=>a+c.toUpperCase()).replace(/\b(ali|ani|abu|sani|nani|amin|budin)\b/g,c=>c[0].toUpperCase()+c.slice(1)):x;
   for(const N of seen){if(ok('ini'))o.push(`ini ${N}.`);if(ok('itu'))o.push(`itu ${N}.`);if(ok('mana')&&ok('itu'))o.push(`mana ${N}? itu ${N}.`);}
-  for(const P of ppl){if(ok('ada'))for(const T of thing.concat(an))o.push(`${P} ada ${T}.`);
-    if(ok('suka'))for(const F of food.concat(an))o.push(`${P} suka ${F}.`);
+  for(const P of ppl){if(ok('ada'))for(const T of thing.concat(an.filter(x=>PET.includes(x))))o.push(`${P} ada ${T}.`);
+    if(ok('suka'))for(const F of food.concat(an.filter(x=>!NOLIKE.includes(x))))o.push(`${P} suka ${F}.`);
     if(ok('makan'))for(const F of food)o.push(`${P} makan ${F}.`);
     if(ok('minum'))for(const D of drink)o.push(`${P} minum ${D}.`);}
   if(ok('saya')){if(ok('suka'))for(const F of food)o.push(`saya suka ${F}.`);if(ok('ada'))for(const T of thing)o.push(`saya ada ${T}.`);}
@@ -883,7 +885,7 @@ function screenKuiz(){
       ask('Suku kata mana yang hilang?');
       q(`${PIC[w]?`<div class="bigpic sm">${PIC[w]}</div>`:''}<div class="word big gap">${parts.map((x,i)=>i===k?'<b class="hole" id="hole">?</b>':`<b class="${i%2?'k':'m'}">${x}</b>`).join('')}</div>
         <div class="opts syls" id="op">${opts.map(o=>`<button class="opt sy" data-v="${o}">${o}</button>`).join('')}</div>`);
-      lastSay=null;$$('.opt',main).forEach(x=>x.addEventListener('click',()=>say(x.dataset.v)));
+      lastSay=null;$$('.opt',main).forEach(x=>x.addEventListener('click',()=>{if(x.dataset.v!==ans&&hasAudio(x.dataset.v))say(x.dataset.v);}));
       done(v=>v===ans,w,()=>{const h=$('#hole');h.textContent=ans;h.className=k%2?'k fill':'m fill';});},
     dengarSuku(){ // hear a syllable, tap it
       let t;do{t=(old.length&&Math.random()<.3)?pick(old):pick(mine);}while(t===lastSyl&&mine.length>1);lastSyl=t;
@@ -1181,7 +1183,7 @@ const HIJM=Object.fromEntries(HIJ.map(h=>[h.c,h]));HIJM['ة']={c:'ة',cons:'t',o
 /* audio key of one parsed syllable. Short a/i/u use the recorded Iqra' 1-3 clips; long vowels (iq:بa*),
    tanwin (iq:بan) and sukun (iq:بْ) are separate recordings. */
 function sylKey(s){
-  const c=(s.c==='ء'||s.c==='ا')?'ا':s.c;
+  const c=(s.c==='ء'||s.c==='ا'||s.c==='أ'||s.c==='إ')?'ا':(s.c==='ة'?'ت':s.c);
   if(s.sukun||(!s.v&&!s.long))return 'iq:'+c+'ْ';
   return 'iq:'+c+s.v+(s.long?'*':'')+(s.tanwin?'n':'')+(s.diph?'+':'');}
 function sylRumi(s){
@@ -1280,7 +1282,7 @@ function screenIqraHuruf(){
     let pool=HIJ.filter(h=>h.c!=='ء');
     if(n===1){const p=iqPage(),upto=(IQ[1].pages[p].gen||{}).upto;if(upto!=null){const L=IQ1_ORDER.slice(0,upto+1);pool=pool.filter(h=>L.includes(h.c));}}
     const v=n===3?pick(['a','i','u']):'a';
-    const lab=h=>readOf(h,v);const ans=pool[pool.findIndex(h=>h.c===fresh(pool.map(h=>h.c),'th'+n))];const opts=[ans];
+    const lab=h=>readOf(h,v);const fc=fresh(pool.map(h=>h.c),'th'+n),ans=pool.find(h=>h.c===fc);const opts=[ans];
     for(const h of shuffle(pool)){if(opts.length>=3)break;if(!opts.some(o=>lab(o)===lab(h)))opts.push(h);}
     const r2a=Math.random()<.5||opts.length<2;
     $('#q').innerHTML=(r2a?`<div class="iqprompt">Mana satu <b>${lab(ans)}</b>?</div><div class="opts" id="op">${shuffle(opts).map(o=>`<button class="opt ar" data-v="${o.c}">${(o.c==='ا'?'أ':o.c)+MARK[v]}</button>`).join('')}</div>`
