@@ -18,8 +18,12 @@ let soundOn=store.get('sound',true);
 let penSeen=false;
 
 /* ---------- audio: Abbas's recorded voice, device-voice fallback, effects, nature sounds ---------- */
-const VOICE={}; /* key -> audio file, recorded by Ayah */
-fetch('audio/voice.json').then(r=>r.json()).then(j=>{for(const k in j)VOICE[k]='audio/'+j[k];}).catch(()=>{});
+/* Two voices: Ayah's own recordings and "Hafiz" (ElevenLabs child voice). Iqra' always uses Ayah's clips. */
+const VOICE={},V_AYAH={},V_HAFIZ={};
+let voiceSet=store.get('voiceSet','hafiz');
+function buildVoice(){for(const k in VOICE)delete VOICE[k];Object.assign(VOICE,V_AYAH);if(voiceSet==='hafiz')for(const k in V_HAFIZ)if(!k.startsWith('iq'))VOICE[k]=V_HAFIZ[k];}
+Promise.all([fetch('audio/voice.json').then(r=>r.json()).catch(()=>({})),fetch('audio/hafiz.json').then(r=>r.json()).catch(()=>({}))]).then(([a,h])=>{
+  for(const k in a)V_AYAH[k]='audio/'+a[k];for(const k in h)V_HAFIZ[k]='audio/'+h[k];buildVoice();});
 function vkey(t){return String(t).toLowerCase().replace(/[!.,?]/g,'').replace(/\s+/g,' ').trim();}
 let voices=[];
 function loadVoices(){try{voices=speechSynthesis.getVoices()||[];}catch(e){}}
@@ -166,6 +170,9 @@ function go(fn,...args){
   main.className='';main.scrollTop=0;
   fn(...args);
   ambSync();
+  const tok=playTok;setTimeout(()=>{const b=$('.m-bubble',main);if(!b||tok!==playTok)return;const t=b.textContent.trim();
+    const last=t.split(/(?<=[.!?])\s+/).pop();const u=VOICE[vkey(t)]?t:(VOICE[vkey(last)]?last:null);
+    if(u){if(lastSay==null)lastSay=u;talk(1800);say(u);}},450);
 }
 
 /* ---------- mascot & celebration ---------- */
@@ -425,11 +432,14 @@ function screenParent(){
       <p class="parentnote"><b>Menulis:</b> guna M-Pencil. Bila pensil dikesan, sentuhan tapak tangan diabaikan.</p>
       <p class="parentnote"><b>Pasang sebagai app:</b> buka menu Chrome, kemudian pilih <b>Add to Home screen</b> / <b>Install app</b>. App boleh digunakan tanpa internet selepas dibuka sekali.</p>
       <p class="parentnote"><b>Bintang</b> disimpan dalam tablet ini sahaja.</p>
-      <div class="row"><button class="btn soft" id="ambT"></button></div>
+      <div class="row"><button class="btn soft" id="ambT"></button><button class="btn soft" id="voiceT"></button></div>
+      <p class="parentnote">Suara Hafiz dijana dengan ElevenLabs. Bacaan Iqra' guna suara Ayah.</p>
       <div class="row"><button class="btn soft" id="resetStars">Kosongkan bintang</button><span class="parentnote" id="resetMsg"></span></div>
     </div></div>`;
   const ambLbl=()=>{$('#ambT').innerHTML=`<img src="img/ic-bird.webp" alt="">Bunyi alam: ${ambOn?'hidup':'mati'}`;};ambLbl();
   $('#ambT').onclick=()=>{$('#btnAmb').click();ambLbl();};
+  const vLbl=()=>{$('#voiceT').innerHTML=`<img src="img/ic-speaker.webp" alt="">Suara: ${voiceSet==='hafiz'?'Hafiz':'Ayah'}`;};vLbl();
+  $('#voiceT').onclick=()=>{voiceSet=voiceSet==='hafiz'?'ayah':'hafiz';store.set('voiceSet',voiceSet);buildVoice();vLbl();say('Hebat!');};
   let armed=false;
   $('#resetStars').onclick=()=>{if(!armed){armed=true;$('#resetMsg').textContent='Tekan sekali lagi untuk sahkan.';return;}
     stars=0;store.set('stars',0);store.set('mstars',{});store.set('write',{});progress={};renderStars(false);$('#resetMsg').textContent='Bintang dikosongkan.';armed=false;};
