@@ -172,7 +172,7 @@ function go(fn,...args){
   main.className='';main.scrollTop=0;
   const tok=playTok; /* taken before the screen runs: if it speaks on its own, the guide line stays quiet */
   fn(...args);
-  ambSync();
+  ambSync();requestAnimationFrame(fitBubble);setTimeout(fitBubble,400);
   setTimeout(async()=>{await Promise.race([curSay,sleep(4000)]);const b=$('.m-bubble',main);if(!b||tok!==playTok)return;const t=b.textContent.trim();
     const last=t.split(/(?<=[.!?])\s+/).pop();const u=VOICE[vkey(t)]?t:(VOICE[vkey(last)]?last:null);
     if(u){if(lastSay==null)lastSay=u;talk(1800);say(u);}},450);
@@ -184,7 +184,7 @@ const TRY=['Hampir! Cuba lagi.','Tak apa, cuba sekali lagi.','Jom cuba lagi, bol
 const PARADE=['🐘','🦒','🐢','🐒','🦁','🐯','🐰','🦓','🐪','🦘','🐧','🐊'];
 const GUIDES={'🐘':{k:'gajah',c:'teal'},'🐵':{k:'orangutan',c:'mango'},'🦒':{k:'kenyalang',c:'hib'},'🐢':{k:'penyu',c:'plum'}};
 function guideHTML(k,c){return `<button type="button" class="guide g-${c}" aria-label="Dengar lagi"><span class="shadow"></span><img src="img/${k}.webp" alt=""></button>`;}
-function mascot(animal,text){const g=GUIDES[animal]||GUIDES['🦒'];return `<div class="mascot g-${g.c}"><div class="m-bubble" role="status">${text}</div>${guideHTML(g.k,g.c)}</div>`;}
+function mascot(animal,text){const g=GUIDES[animal]||GUIDES['🦒'];return `<div class="mascot g-${g.c}"><div class="m-bubble" role="status"><span class="bt">${text}</span></div>${guideHTML(g.k,g.c)}</div>`;}
 let talkTimer=null,lastSay=null;
 function talk(ms){const g=$('.mascot .guide',main);if(!g)return;clearTimeout(talkTimer);
   g.classList.add('talk');talkTimer=setTimeout(()=>g.classList.remove('talk'),Math.max(1500,ms||2400));}
@@ -192,9 +192,16 @@ function talk(ms){const g=$('.mascot .guide',main);if(!g)return;clearTimeout(tal
 main.addEventListener('click',e=>{const g=e.target.closest('.guide');if(!g)return;
   g.classList.remove('happy','sad','hop');void g.offsetWidth;g.classList.add('hop');sfx('tap');
   if(lastSay){talk(2000);say(lastSay);}});
+/* the guide's bubble never scrolls: shrink the text until it fits */
+function bubbleOver(b){const t=$('.bt',b);if(!t)return false;const cs=getComputedStyle(b);
+  return t.offsetHeight+parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom)>b.clientHeight+1;}
+function fitBubble(){$$('.m-bubble',main).forEach(b=>{b.style.fontSize='';let fs=parseFloat(getComputedStyle(b).fontSize),n=0;
+  while(bubbleOver(b)&&fs>11&&n++<40){fs-=1;b.style.fontSize=fs+'px';}});}
+window.addEventListener('resize',()=>requestAnimationFrame(fitBubble));
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitBubble);
 function mascotSay(text,mood,speak=true,parts){
   const m=$('.mascot',main);if(!m)return;
-  $('.m-bubble',m).textContent=text;
+  const bb=$('.m-bubble',m);bb.innerHTML='<span class="bt"></span>';$('.bt',bb).textContent=text;fitBubble();
   const a=$('.guide',m);a.classList.remove('happy','sad');void a.offsetWidth;if(mood)a.classList.add(mood);
   talk(600+String(text).length*70);
   if(mood==='happy')sfx('ok');else if(mood==='sad')sfx('bad');
