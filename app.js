@@ -1150,13 +1150,13 @@ function screenKiraKuiz(){
       const more=Math.random()<.5,txt=more?this.p:this.p2,ans=more?(a>b?'a':'b'):(a<b?'a':'b');const an=pickAnimal(),an2=pickAnimal(an);ask(txt,true);
       q(`<div class="opts cmp" id="op"><button class="opt grp" data-v="a">${scatterHTML(a,an)}</button><button class="opt grp" data-v="b">${scatterHTML(b,an2)}</button></div>`);
       done(v=>v===ans,[NUMW[ans==='a'?a:b]]);}},
-    selepas:{p:'Nombor apa selepas ini?',f(){const n=deal('qs'+max,()=>range(1,max-1));ask(this.p,true,[NUMW[n]]);
+    selepas:{p:'Nombor apa selepas ini?',f(){const n=deal('qs'+min+max,()=>range(Math.max(1,min-1),max-1));ask(this.p,true,[NUMW[n]]);
       q(`<div class="nline">${(n>1?`<span>${n-1}</span><i>→</i>`:'')+`<span class="cur">${n}</span><i>→</i><span class="qmark" id="qm">?</span>`}</div>${optsHTML(n+1,1,max)}`);
       done(v=>+v===n+1,[NUMW[n+1]],()=>{const m=$('#qm');m.textContent=n+1;m.classList.add('done');});}},
-    sebelum:{p:'Nombor apa sebelum ini?',f(){const n=deal('qb'+max,()=>range(2,max));ask(this.p,true,[NUMW[n]]);
+    sebelum:{p:'Nombor apa sebelum ini?',f(){const n=deal('qb'+min+max,()=>range(Math.max(2,min),max));ask(this.p,true,[NUMW[n]]);
       q(`<div class="nline"><span class="qmark" id="qm">?</span><i>→</i><span class="cur">${n}</span>${n<max?`<i>→</i><span>${n+1}</span>`:''}</div>${optsHTML(n-1,0,max)}`);
       done(v=>+v===n-1,[NUMW[n-1]],()=>{const m=$('#qm');m.textContent=n-1;m.classList.add('done');});}},
-    hilang:{p:'Nombor mana yang hilang?',f(){const L=Math.min(5,max),st=rint(1,max-L+1),seq=range(st,st+L-1),k=rint(1,L-2),ans=seq[k];ask(this.p);
+    hilang:{p:'Nombor mana yang hilang?',f(){const L=Math.min(5,max),st=rint(min>5?Math.min(min-1,max-L+1):1,max-L+1),seq=range(st,st+L-1),k=rint(1,L-2),ans=seq[k];ask(this.p);
       q(`<div class="nline">${seq.map((v,i)=>i===k?'<span class="qmark" id="qm">?</span>':`<span>${v}</span>`).join('')}</div>${optsHTML(ans,1,max)}`);
       done(v=>+v===ans,[NUMW[ans]],()=>{const m=$('#qm');m.textContent=ans;m.classList.add('done');});}},
     tambah:{p:'Dua kumpulan. Semuanya berapa?',need:()=>add||t>=5,f(){const [a,b]=deal('qt'+max,()=>range(1,max-1).flatMap(a=>range(1,max-a).map(b=>[a,b]))),an=pickAnimal(),an2=pickAnimal(an);ask(this.p);
